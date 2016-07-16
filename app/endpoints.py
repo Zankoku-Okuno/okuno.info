@@ -1,8 +1,9 @@
 import bottle
 from bottle import request, response, view
 from .framework import app, sql
+from .auth import login, login_required
 
-from urllib.parse import quote_plus as urlencode, unquote_plus as urldecode
+from urllib.parse import quote_plus as percent_encode, unquote_plus as percent_decode
 import json
 import sqlite3
 from datetime import datetime, timedelta
@@ -10,75 +11,6 @@ from datetime import datetime, timedelta
 
 timeformat = "%Y-%m-%dT%H:%M:%S+00:00"
 dbfile = "db.sqlite"
-
-from cryptography.fernet import Fernet
-key = b'OqagrExHnLCloVLYLIHmbOmP4voP0AvVTKe2bIah6EU='
-# FIXME am I supposed to use just one of these, or create one per request?
-crypto = Fernet(key)
-
-def check_credentials(uname, pword):
-    return uname == "okuno" and pword == "foobar"
-
-def check_login(uname, pword):
-    if check_credentials(uname, pword):
-        setat = datetime.utcnow()
-        expires = setat + timedelta(days=1)
-        token = dict(uname=uname, pword=pword,
-                     ipaddr=request.environ.get('REMOTE_ADDR'),
-                     expires=expires.strftime(timeformat), setat=setat.strftime(timeformat))
-        token = json.dumps(token).encode(encoding='UTF-8', errors='strict')
-        token = crypto.encrypt(token)
-        token = token.decode('ascii', errors='strict')
-        return token
-    else:
-        return None
-
-def check_authtoken(token):
-    if token is None:
-        return None
-    token = crypto.decrypt(token.encode('ascii', errors='strict'))
-    token = json.loads(token.decode('UTF-8', errors='strict'))
-    now = datetime.utcnow()
-    if now < datetime.strptime(token['expires'], timeformat) \
-            and request.environ.get('REMOTE_ADDR') == token['ipaddr'] \
-            and check_credentials(token['uname'], token['pword']):
-        token['expires'] = (now + timedelta(days=1)).strftime(timeformat)
-        token = json.dumps(token).encode('UTF-8', errors='strict')
-        token = crypto.encrypt(token)
-        token = token.decode('ascii', errors='strict')
-        return token
-    else:
-        return None
-    
-
-def login():
-    # FIXME possibly take uname and pword from the uri
-    # https uris are encrypted, but what gets sent over DNS or stored in the browser?
-    uname = request.params.get('uname', None)
-    pword = request.params.get('pword', None)
-    return check_login(uname, pword)
-
-def authenticate():
-    authtoken = request.cookies.get('authtoken', None)
-    authtoken = check_authtoken(authtoken)
-    if authtoken:
-        response.set_cookie('authtoken', authtoken)
-        return
-    
-    authtoken = login()
-    if authtoken:
-        response.set_cookie('authtoken', authtoken)
-        return
-
-    bottle.redirect('/login?next={next}'.format(next=urlencode(request.path)))
-
-def login_required(f):
-    def g(*args, **kwargs):
-        authenticate()
-        return f(*args, **kwargs)
-    return g
-
-
 
 
 
@@ -97,10 +29,8 @@ def login_form():
         </form>"""
 @app.post('/login')
 def login_attempt():
-    authtoken = login()
-    if authtoken:
-        response.set_cookie('authtoken', authtoken)
-        bottle.redirect(urldecode(request.params.get('next', '/')))
+    if login():
+        bottle.redirect(percent_decode(request.params.get('next', '/')))
     else:
         return login_form()
 
