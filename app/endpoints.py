@@ -59,7 +59,7 @@ def mk_idea():
 
     with sql(dbfile) as db:
         id = db.execute("""INSERT INTO idea (text, created) VALUES (?, ?)""", (text, now)).lastrowid
-    bottle.redirect("/ideas")
+    bottle.redirect(request.path)
 
 @app.get('/projects')
 @login_required
@@ -80,7 +80,55 @@ def mk_project():
 
     with sql(dbfile) as db:
         id = db.execute("""INSERT INTO project (name, description) VALUES (?, ?)""", (name, description)).lastrowid
-    bottle.redirect("/projects")
+    bottle.redirect(request.path)
+
+@app.get('/projects/<project_id:int>',
+         name='project')
+@login_required
+@view("project.html")
+def project(project_id):
+    with sql(dbfile) as db:
+        project = db.execute("""SELECT * FROM project WHERE id = ?;""", (project_id,)).fetchone()
+        if project is None:
+            bottle.abort(404, "No such project")
+        actions = db.execute("""SELECT * FROM action WHERE project_id = ?;""", (project_id,)).fetchall()
+        ideas = db.execute("""SELECT * FROM idea WHERE project_id = ?;""", (project_id,)).fetchall()
+    return dict(project=project, actions=actions, ideas=ideas)
+
+@app.post("/actions")
+@login_required
+def alter_action():
+    id = request.forms.get('id')
+    project_id = request.forms.get('project_id')
+    text = request.forms.get('text')
+    completed = request.forms.get('completed')
+
+    if id is None:
+        if project_id is None:
+            bottle.abort(400, "Missing `project_id` field")
+        if not text:
+            bottle.abort(400, "Missing `text` field")
+        now = datetime.utcnow().strftime(timeformat)
+        with sql(dbfile) as db:
+            id = db.execute("""INSERT INTO action (project_id, text, created)
+                               VALUES (?, ?, ?);""", (project_id, text, now)).lastrowid
+    else:
+        with sql(dbfile) as db:
+            idea = db.execute("""SELECT * FROM action WHERE id = ?;""", (id,)).fetchone()
+            if not idea:
+                bottle.abort(404)
+            project_id = idea['project_id']
+            if completed is not None:
+                if completed:
+                    completed = datetime.utcnow().strftime(timeformat)
+                else:
+                    completed = None
+                db.execute("""UPDATE action SET completed = ? WHERE id = ?;""", (completed, id))
+            if text:
+                db.execute("""UPDATE action SET text = ? WHERE id = ?;""", (text, id))
+        
+    bottle.redirect(app.get_url('project', project_id=project_id))
+
 
 
 @app.post("/ideas/sort")
