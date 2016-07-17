@@ -1,4 +1,4 @@
-<form method=POST action="ideas">
+<form method=POST action="{{app.get_url('mk_idea')}}">
     <textarea name=text required
               rows=5 cols=60 style="resize: both;"
               placeholder="new idea"></textarea><br/>
@@ -8,10 +8,9 @@
     %for idea in ideas:
     <li class='.idea'>
         <p>{{idea['text']}}</p>
-        <form method=POST action="ideas/sort">
-            <input type=hidden name=idea value={{idea['id']}} />
+        <form method=POST action="{{app.get_url('ed_idea', id=idea['id'])}}">
             <select name=project required>
-                %if idea['project_id'] is None and not idea['crankfile']:
+                %if idea['sorted'] is None:
                 <option value='' selected>Select Project</option>
                 %end
                 <option value='crankfile'{{ ' selected' if idea['crankfile'] else '' }}>Crankfile</option>
