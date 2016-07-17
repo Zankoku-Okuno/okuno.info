@@ -31,7 +31,12 @@ def login_form():
 @app.post('/login')
 def login_attempt():
     if login():
-        bottle.redirect(percent_decode(request.params.get('next', '/')))
+        next = request.params.get('next')
+        if next is not None:
+            next = percent_decode(next)
+        else:
+            next = app.get_url('index')
+        bottle.redirect(next)
     else:
         bottle.redirect(app.get_url('login'))
 
@@ -56,14 +61,15 @@ def ideas():
 @login_required
 def mk_idea():
     now = datetime.utcnow().strftime(timeformat)
-    text = request.forms.get('text')
+    text = request.params.get('text')
     if not text:
         bottle.abort(400, "Missing `text` field")
 
     with sql(dbfile) as db:
         id = db.execute("""INSERT INTO idea (text, created) VALUES (?, ?)""", (text, now)).lastrowid
     
-    bottle.redirect(request.path)
+    next = request.headers.get('Referer', app.get_url('idea', id=id))
+    bottle.redirect(next)
 
 @app.post('/idea/<id:int>', name='ed_idea')
 @login_required
@@ -87,7 +93,8 @@ def ed_idea(id):
                               WHERE id = ?;""", (project['id'], now, idea['id']))
         # TODO edit text
 
-    bottle.redirect('/ideas')
+    next = request.headers.get('Referer', app.get_url('idea', id=id))
+    bottle.redirect(next)
 
 
 # ====== Projects ======
@@ -113,35 +120,50 @@ def project(id):
         project = db.execute("""SELECT * FROM project WHERE id = ?;""", (id,)).fetchone()
         if project is None:
             bottle.abort(404, "No such project")
-        actions = db.execute("""SELECT * FROM action WHERE project_id = ?;""", (id,)).fetchall()
+        actions = db.execute("""SELECT * FROM action
+                                WHERE project_id = ?
+                                ORDER BY completed ASC;""", (id,)).fetchall()
         ideas = db.execute("""SELECT * FROM idea WHERE project_id = ?;""", (id,)).fetchall()
     return dict(project=project, actions=actions, ideas=ideas)
 
 @app.post("/projects", name='mk_project')
 @login_required
 def mk_project():
-    name = request.forms.get('name')
+    name = request.params.get('name')
     if not name:
         bottle.abort(400, "Missing `name` field")
-    description = request.forms.get('description', "")
+    description = request.params.get('description', "")
 
     with sql(dbfile) as db:
         id = db.execute("""INSERT INTO project (name, description) VALUES (?, ?);""", (name, description)).lastrowid
 
-    bottle.redirect(request.path)
+    next = request.headers.get('Referer', app.get_url('project', id=id))
+    bottle.redirect(next)
 
 # TODO ed_project
 
 
 # ====== Actions ======
 
+@app.get("/action/<id:int>", name="action")
+@login_required
+@view("action.html")
+def action(id):
+    with sql(dbfile) as db:
+        action = db.execute("""SELECT action.*, project.name as project_name
+                               FROM action JOIN project ON project.id = action.project_id
+                               WHERE action.id = ?;""", (id,)).fetchone()
+        if action is None:
+            bottle.abort(404)
+    return dict(action=action)
+
 @app.post("/actions", name='mk_action')
 @login_required
 def mk_action():
-    project_id = request.forms.get('project_id')
+    project_id = request.params.get('project_id')
     if project_id is None:
         bottle.abort(400, "Missing `project_id` field")
-    text = request.forms.get('text')
+    text = request.params.get('text')
     if not text:
         bottle.abort(400, "Missing `text` field")
     now = datetime.utcnow().strftime(timeformat)
@@ -150,7 +172,8 @@ def mk_action():
         id = db.execute("""INSERT INTO action (project_id, text, created)
                            VALUES (?, ?, ?);""", (project_id, text, now)).lastrowid
 
-    bottle.redirect(app.get_url('project', id=project_id))
+    next = request.headers.get('Referer', app.get_url('action', id=id))
+    bottle.redirect(next)
 
 @app.post("/action/<id:int>", name='ed_action')
 @login_required
@@ -160,16 +183,17 @@ def ed_action(id):
         if action is None:
             bottle.abort(404)
 
-        completed = request.forms.get('completed')
+        completed = request.params.get('completed')
         if completed is not None:
-            if completed:
+            if completed.lower() in {'1', 'yes', 'true'}:
                 completed = datetime.utcnow().strftime(timeformat)
             else:
                 completed = None
             db.execute("""UPDATE action SET completed = ? WHERE id = ?;""", (completed, id))
-        text = request.forms.get('text')
+        text = request.params.get('text')
         if text:
             db.execute("""UPDATE action SET text = ? WHERE id = ?;""", (text, id))
 
-    bottle.redirect(app.get_url('project', id=action['project_id']))
+    next = request.headers.get('Referer', app.get_url('action', id=id))
+    bottle.redirect(next)
 
