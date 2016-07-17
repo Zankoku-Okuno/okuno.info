@@ -1,6 +1,6 @@
 from bottle import Bottle
 
-app = Bottle()
+app = Bottle(catchall=False)
 
 
 
