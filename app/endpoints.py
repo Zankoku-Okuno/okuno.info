@@ -197,3 +197,30 @@ def ed_action(id):
     next = request.headers.get('Referer', app.get_url('action', id=id))
     bottle.redirect(next)
 
+
+# ====== Epigrams ======
+
+@app.get("/epigrams", name='epigrams')
+@login_required
+@view("epigrams.html")
+def epigrams():
+    with sql(dbfile) as db:
+        epigrams = db.execute("""SELECT * FROM epigram;""").fetchall()
+    return dict(epigrams=epigrams)
+
+@app.post("/epigrams", name='mk_epigram')
+@login_required
+def mk_epigram():
+    text = request.params.get('text', "")
+    if not text:
+        bottle.abort(400, "Missing `text` field")
+    credit = request.params.get('credit', "")
+    if not credit:
+        credit = None
+
+    with sql(dbfile) as db:
+        id = db.execute("""INSERT INTO epigram (text, credit) VALUES (?, ?);""", (text, credit)).lastrowid
+
+    next = request.headers.get('Referer', app.get_url('epigrams'))
+    bottle.redirect(next)
+
