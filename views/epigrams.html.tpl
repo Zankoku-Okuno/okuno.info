@@ -1,3 +1,6 @@
+% rebase('base.html.tpl')
+<h2>Epigrams</h2>
+
 <form method=POST action="{{app.get_url('mk_epigram')}}">
     <textarea name=text required
               rows=5 cols=60 style="resize: both;"

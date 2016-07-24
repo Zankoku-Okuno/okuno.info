@@ -1,3 +1,6 @@
+% rebase('base.html.tpl')
+<h2>Projects</h2>
+
 <form method=POST action="{{app.get_url('mk_project')}}">
     <input type=text required name=name
            placeholder="new project" /></br>

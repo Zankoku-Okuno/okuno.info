@@ -1,3 +1,6 @@
+% rebase('base.html.tpl')
+<h2>Project</h2>
+
 <h3>{{project['name']}}</h3>
 <p>{{project['description']}}</p>
 
