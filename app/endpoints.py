@@ -253,3 +253,31 @@ def mk_epigram():
     next = request.headers.get('Referer', app.get_url('epigrams'))
     bottle.redirect(next)
 
+@app.get("/epigram/<id:int>", name='epigram')
+@login_required
+@view("epigram.html")
+def epigram(id):
+    with sql(dbfile) as db:
+        epigram = db.execute("""SELECT * FROM epigram WHERE id = ?;""", (id,)).fetchone()
+        if epigram is None:
+            bottle.abort(404)
+    return dict(epigram=epigram)
+
+@app.post("/epigram/<id:int>", name='ed_epigram')
+@login_required
+def ed_epigram(id):
+    with sql(dbfile) as db:
+        epigram = db.execute("""SELECT * FROM epigram WHERE id = ?;""", (id,)).fetchone()
+        if epigram is None:
+            bottle.abort(404)
+        text = request.params.get('text')
+        credit = request.params.get('credit')
+
+        if text:
+            db.execute("""UPDATE epigram SET text = ? WHERE id = ?;""", (text, id))
+        if credit is not None:
+            db.execute("""UPDATE epigram SET credit = ? WHERE id = ?;""", (credit, id))
+
+    next = request.headers.get('Referer', app.get_url('epigram', id=id))
+    bottle.redirect(next)
+
