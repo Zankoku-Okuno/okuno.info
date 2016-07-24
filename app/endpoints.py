@@ -28,6 +28,7 @@ def login_form():
             <input type=password name=pword />
             <input type=submit value=Login />
         </form>"""
+
 @app.post('/login')
 def login_attempt():
     if login():
@@ -71,6 +72,16 @@ def mk_idea():
     next = request.headers.get('Referer', app.get_url('idea', id=id))
     bottle.redirect(next)
 
+@app.get('/idea/<id:int>', name='idea')
+@login_required
+@view("idea.html")
+def idea(id):
+    with sql(dbfile) as db:
+        idea = db.execute("""SELECT * FROM idea WHERE id = ?;""", (id,)).fetchone()
+        if idea is None:
+            bottle.abort(404)
+    return dict(idea=idea)
+
 @app.post('/idea/<id:int>', name='ed_idea')
 @login_required
 def ed_idea(id):
@@ -78,6 +89,7 @@ def ed_idea(id):
         idea = db.execute("""SELECT id FROM idea WHERE id = ?;""", (id,)).fetchone()
         if idea is None:
             bottle.abort(400, "Missing `idea` field")
+        text = request.params.get('text', "")
         project = request.params.get('project')
         now = datetime.utcnow().strftime(timeformat)
 
@@ -91,7 +103,8 @@ def ed_idea(id):
                     bottle.abort(404)
                 db.execute("""UPDATE idea SET project_id = ?, crankfile = 0, sorted = ?
                               WHERE id = ?;""", (project['id'], now, idea['id']))
-        # TODO edit text
+        if text:
+            db.execute("""UPDATE idea SET text = ? WHERE id = ?;""", (text, id,))
 
     next = request.headers.get('Referer', app.get_url('idea', id=id))
     bottle.redirect(next)
@@ -140,7 +153,23 @@ def mk_project():
     next = request.headers.get('Referer', app.get_url('project', id=id))
     bottle.redirect(next)
 
-# TODO ed_project
+@app.post("/project/<id:int>", name='ed_project')
+@login_required
+def ed_project(id):
+    with sql(dbfile) as db:
+        project = db.execute("""SELECT * FROM project WHERE id = ?;""", (id,)).fetchone()
+        if project is None:
+            bottle.abort(404)
+        name = request.params.get('name')
+        description = request.params.get('description')
+
+        if name:
+            db.execute("""UPDATE project SET name = ? WHERE id = ?;""", (name, id,))
+        if description:
+            db.execute("""UPDATE project SET description = ? WHERE id = ?;""", (description, id,))
+
+    next = request.headers.get('Referer', app.get_url('action', id=id))
+    bottle.redirect(next)
 
 
 # ====== Actions ======

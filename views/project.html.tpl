@@ -30,13 +30,22 @@
         <!--<pre>{{action['text']}}</pre>-->
         %if action['completed'] is None:
         <form method=POST action="{{app.get_url('ed_action', id=action['id'])}}">
-            <button type=submit name='completed' value=1>☐</button> {{action['text']}}
+            <button type=submit name='completed' value=1>☐</button> {{action['text']}} <small><a href={{app.get_url('action', id=action['id'])}}>edit</a></small>
         </form>
         %else:
-        <form method=GET action="{{app.get_url('action', id=action['id'])}}">
-            <button type=submit>☑</button> {{action['text']}}
-        </form>
+        <button>☑</button> {{action['text']}} <small><a href={{app.get_url('action', id=action['id'])}}>edit</a></small>
         %end
     </li>
     %end
 </ol>
+
+<h3>Edit</h3>
+
+<form method=POST action="{{app.get_url('ed_project', id=project['id'])}}">
+    <input type=text name=name value={{project['name']}} />
+    <br/>
+    <textarea name=description
+              rows=5 cols=60 style="resize: both;">{{project['description']}}</textarea>
+    <br/>
+    <button type=submit>Edit</button>
+</form>

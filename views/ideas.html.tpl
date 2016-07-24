@@ -10,7 +10,8 @@
 <ul>
     %for idea in ideas:
     <li class='.idea'>
-        <p>{{idea['text']}}</p>
+        <p>{{idea['text']}}
+        <small><a href={{app.get_url('idea', id=idea['id'])}}>edit</a></small></p>
         <form method=POST action="{{app.get_url('ed_idea', id=idea['id'])}}">
             <select name=project required>
                 %if idea['sorted'] is None:
