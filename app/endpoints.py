@@ -64,6 +64,16 @@ def ideas():
                                  ORDER BY name ASC;""").fetchall()
     return dict(ideas=ideas, projects=projects)
 
+@app.get('/ideas/crankfile', name='crankfile')
+@login_required
+@view("crankfile.html")
+def crankfile():
+    with sql(dbfile()) as db:
+        ideas = db.execute("""SELECT * FROM idea
+                              WHERE crankfile != 0
+                              ORDER BY created DESC;""").fetchall()
+    return dict(ideas=ideas)
+
 @app.post('/ideas', name='mk_idea')
 @login_required
 def mk_idea():
