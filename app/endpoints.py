@@ -10,7 +10,9 @@ from datetime import datetime, timedelta
 
 
 timeformat = "%Y-%m-%dT%H:%M:%S+00:00"
-dbfile = "db.sqlite"
+
+def dbfile():
+    return "db/{}.db".format(request.username)
 
 
 # ====== Administrivia ======
@@ -48,7 +50,7 @@ def login_attempt():
 @login_required
 @view("ideas.html")
 def ideas():
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         dayAgo = (datetime.utcnow() - timedelta(hours=16)).strftime(timeformat)
         ideas = db.execute("""SELECT * FROM idea
                               WHERE (project_id IS NULL AND crankfile = 0)
@@ -66,7 +68,7 @@ def mk_idea():
     if not text:
         bottle.abort(400, "Missing `text` field")
 
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         id = db.execute("""INSERT INTO idea (text, created) VALUES (?, ?)""", (text, now)).lastrowid
     
     next = request.headers.get('Referer', app.get_url('idea', id=id))
@@ -76,7 +78,7 @@ def mk_idea():
 @login_required
 @view("idea.html")
 def idea(id):
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         idea = db.execute("""SELECT * FROM idea WHERE id = ?;""", (id,)).fetchone()
         if idea is None:
             bottle.abort(404)
@@ -85,7 +87,7 @@ def idea(id):
 @app.post('/idea/<id:int>', name='ed_idea')
 @login_required
 def ed_idea(id):
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         idea = db.execute("""SELECT id FROM idea WHERE id = ?;""", (id,)).fetchone()
         if idea is None:
             bottle.abort(400, "Missing `idea` field")
@@ -116,7 +118,7 @@ def ed_idea(id):
 @login_required
 @view("projects.html")
 def projects():
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         rows = db.execute("""SELECT project.*, count(action.id) as actions_count
                              FROM project LEFT JOIN action
                                           ON (project.id = action.project_id
@@ -129,7 +131,7 @@ def projects():
 @login_required
 @view("project.html")
 def project(id):
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         project = db.execute("""SELECT * FROM project WHERE id = ?;""", (id,)).fetchone()
         if project is None:
             bottle.abort(404, "No such project")
@@ -147,7 +149,7 @@ def mk_project():
         bottle.abort(400, "Missing `name` field")
     description = request.params.get('description', "")
 
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         id = db.execute("""INSERT INTO project (name, description) VALUES (?, ?);""", (name, description)).lastrowid
 
     next = request.headers.get('Referer', app.get_url('project', id=id))
@@ -156,7 +158,7 @@ def mk_project():
 @app.post("/project/<id:int>", name='ed_project')
 @login_required
 def ed_project(id):
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         project = db.execute("""SELECT * FROM project WHERE id = ?;""", (id,)).fetchone()
         if project is None:
             bottle.abort(404)
@@ -178,7 +180,7 @@ def ed_project(id):
 @login_required
 @view("action.html")
 def action(id):
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         action = db.execute("""SELECT action.*, project.name as project_name
                                FROM action JOIN project ON project.id = action.project_id
                                WHERE action.id = ?;""", (id,)).fetchone()
@@ -197,7 +199,7 @@ def mk_action():
         bottle.abort(400, "Missing `text` field")
     now = datetime.utcnow().strftime(timeformat)
 
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         id = db.execute("""INSERT INTO action (project_id, text, created)
                            VALUES (?, ?, ?);""", (project_id, text, now)).lastrowid
 
@@ -207,7 +209,7 @@ def mk_action():
 @app.post("/action/<id:int>", name='ed_action')
 @login_required
 def ed_action(id):
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         action = db.execute("""SELECT * FROM action WHERE id = ?;""", (id,)).fetchone()
         if action is None:
             bottle.abort(404)
@@ -233,7 +235,7 @@ def ed_action(id):
 @login_required
 @view("epigrams.html")
 def epigrams():
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         epigrams = db.execute("""SELECT * FROM epigram;""").fetchall()
     return dict(epigrams=epigrams)
 
@@ -247,7 +249,7 @@ def mk_epigram():
     if not credit:
         credit = None
 
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         id = db.execute("""INSERT INTO epigram (text, credit) VALUES (?, ?);""", (text, credit)).lastrowid
 
     next = request.headers.get('Referer', app.get_url('epigrams'))
@@ -257,7 +259,7 @@ def mk_epigram():
 @login_required
 @view("epigram.html")
 def epigram(id):
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         epigram = db.execute("""SELECT * FROM epigram WHERE id = ?;""", (id,)).fetchone()
         if epigram is None:
             bottle.abort(404)
@@ -266,7 +268,7 @@ def epigram(id):
 @app.post("/epigram/<id:int>", name='ed_epigram')
 @login_required
 def ed_epigram(id):
-    with sql(dbfile) as db:
+    with sql(dbfile()) as db:
         epigram = db.execute("""SELECT * FROM epigram WHERE id = ?;""", (id,)).fetchone()
         if epigram is None:
             bottle.abort(404)

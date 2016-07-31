@@ -50,19 +50,19 @@ def check_credentials(uname, pword):
 
 def check_token(token):
     if token is None:
-        return None
+        return None, None
     token = token.encode('UTF-8', errors='strict')
     try: token = crypto.decrypt(token, ttl=16*60*60)
-    except InvalidToken: return False
+    except InvalidToken: return None, False
     token = token.decode('UTF-8', errors='strict')
     token = json.loads(token)
     uname = token.get('uname')
     pwordhash = token.get('pwordhash')
     if uname is None or pwordhash is None:
-        return False
+        return None, False
     pwordhash = pwordhash.encode('ASCII', errors='strict')
     testhash = load_pwordhash(uname)
-    return crypto_eq(pwordhash, testhash)
+    return uname, crypto_eq(pwordhash, testhash)
 
 
 import bottle
@@ -84,7 +84,9 @@ def login():
 def login_required(endpoint):
     def g(*args, **kwargs):
         authtoken = request.cookies.get('authtoken')
-        if check_token(authtoken):
+        uname, token = check_token(authtoken)
+        if token:
+            request.username = uname
             return endpoint(*args, **kwargs)
         else:
             bottle.redirect('/login?next={next}'.format(next=percent_encode(request.path)))
