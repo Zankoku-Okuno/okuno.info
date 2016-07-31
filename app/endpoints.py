@@ -96,7 +96,9 @@ def idea(id):
         idea = db.execute("""SELECT * FROM idea WHERE id = ?;""", (id,)).fetchone()
         if idea is None:
             bottle.abort(404)
-    return dict(idea=idea)
+        projects = db.execute("""SELECT * FROM project
+                                 ORDER BY name ASC;""").fetchall()
+    return dict(idea=idea, projects=projects)
 
 @app.post('/idea/<id:int>', name='ed_idea')
 @login_required
