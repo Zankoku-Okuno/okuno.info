@@ -93,6 +93,7 @@ def ed_idea(id):
             bottle.abort(400, "Missing `idea` field")
         text = request.params.get('text', "")
         project = request.params.get('project')
+        delete = request.params.get('delete', 'no')
         now = datetime.utcnow().strftime(timeformat)
 
         if project is not None:
@@ -107,6 +108,10 @@ def ed_idea(id):
                               WHERE id = ?;""", (project['id'], now, idea['id']))
         if text:
             db.execute("""UPDATE idea SET text = ? WHERE id = ?;""", (text, id,))
+
+        if delete.lower() in {'1', 'yes', 'true'}:
+            db.execute("""DELETE FROM idea WHERE id = ?;""", (id,))
+            bottle.redirect(app.get_url('index')) #FIXME more precise redirect
 
     next = request.headers.get('Referer', app.get_url('idea', id=id))
     bottle.redirect(next)
@@ -213,17 +218,22 @@ def ed_action(id):
         action = db.execute("""SELECT * FROM action WHERE id = ?;""", (id,)).fetchone()
         if action is None:
             bottle.abort(404)
-
         completed = request.params.get('completed')
+        text = request.params.get('text')
+        delete = request.params.get('delete', 'no')
+
         if completed is not None:
             if completed.lower() in {'1', 'yes', 'true'}:
                 completed = datetime.utcnow().strftime(timeformat)
             else:
                 completed = None
             db.execute("""UPDATE action SET completed = ? WHERE id = ?;""", (completed, id))
-        text = request.params.get('text')
         if text:
             db.execute("""UPDATE action SET text = ? WHERE id = ?;""", (text, id))
+
+        if delete.lower() in {'1', 'yes', 'true'}:
+            db.execute("""DELETE FROM action WHERE id = ?;""", (id,))
+            bottle.redirect(app.get_url('project', id=action['project_id']))
 
     next = request.headers.get('Referer', app.get_url('action', id=id))
     bottle.redirect(next)

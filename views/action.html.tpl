@@ -12,5 +12,13 @@
     <button type=submit name=completed value=0>☑ | Reopen</button>
     %end
 </form>
+<form method=POST action={{app.get_url('ed_action', id=action['id'])}}
+      style="border: thin solid red; margin-top: 5em; padding: 0.5em;">
+    <select name=delete>
+        <option value='no' selected></option>
+        <option value='yes'>Delete</option>
+    </select>
+    <button type=submit>Confirm</button>
+</form>
 <!-- TODO show project name -->
 <!-- TODO edit text-->
