@@ -81,6 +81,9 @@ def login():
     else:
         return False
 
+def logout():
+    bottle.response.delete_cookie('authtoken', path='/')
+
 def login_required(endpoint):
     def g(*args, **kwargs):
         authtoken = request.cookies.get('authtoken')

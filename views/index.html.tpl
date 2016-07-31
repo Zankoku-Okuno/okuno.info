@@ -1,4 +1,10 @@
 % rebase('base.html.tpl')
+
+<div>
+    <form method=GET action={{app.get_url('login')}} style="display: inline;"><button>Login</button></form>
+    <form method=POST action={{app.get_url('logout')}} style="display: inline;"><button>Logout</button></form>
+</div>
+
 <h2>Home</h2>
 
 <ul>

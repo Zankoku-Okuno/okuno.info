@@ -1,7 +1,7 @@
 import bottle
 from bottle import request, response, view
 from .framework import app, sql
-from .auth import login, login_required
+from .auth import login, logout, login_required
 
 from urllib.parse import quote_plus as percent_encode, unquote_plus as percent_decode
 import json
@@ -43,6 +43,10 @@ def login_attempt():
     else:
         bottle.redirect(app.get_url('login'))
 
+@app.post('/logout', name='logout')
+def logout_button():
+    logout()
+    bottle.redirect(app.get_url('index'))
 
 # ====== Ideas ======
 
