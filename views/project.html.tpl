@@ -9,7 +9,8 @@
 <ul>
     %for idea in ideas:
     <li>
-        <pre>{{idea['text']}}</pre>
+        <pre>{{idea['text']}}
+  <small><a href={{app.get_url('idea', id=idea['id'])}} >edit</a></small></pre>
     </li>
     %end
 </ul>
