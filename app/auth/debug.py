@@ -1,3 +1,6 @@
+import os
+
+
 def login():
     return True
 
@@ -7,6 +10,6 @@ def logout():
 def login_required(endpoint):
     from bottle import request
     def g(*args, **kwargs):
-        request.username = 'okuno'
+        request.username = os.environ['DEBUG']
         return endpoint(*args, **kwargs)
     return g
