@@ -11,6 +11,8 @@
 
         <link rel=stylesheet href='/static/collapse.css' />
         <script type='text/javascript' src='/static/collapse.js'></script>
+        <link rel=stylesheet href='/static/tabs.css' />
+        <script type='text/javascript' src='/static/tabs.js'></script>
     </head>
     <body>
         <h1><a href={{app.get_url('index')}}>Okuno.info</a></h1>

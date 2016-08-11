@@ -1,0 +1,9 @@
+.tabs-head > input[type=radio] {
+    display: none;
+}
+.tab-selector {
+    cursor: pointer;
+}
+.tab-closed {
+    display: none;
+}

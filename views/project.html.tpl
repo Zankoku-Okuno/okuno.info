@@ -3,12 +3,12 @@
 
 <div style="border: thin black solid; border-radius: 5px;">
     <h3 class="collapse-head collapse-selector"
-        data-collapses=project{{project['id']}}>
+        data-collapse=project{{project['id']}}>
             <input type=checkbox checked />
             {{project['name']}}
     </h3>
-    <div class="collapse tab-head"
-         data-collapses=project{{project['id']}}
+    <div class="collapse tabs-head"
+         data-collapse=project{{project['id']}}
          data-tabs=project{{project['id']}}>
         <input type=radio name=tab-project{{project['id']}}
                data-tabs=project{{project['id']}}
@@ -18,15 +18,15 @@
                value=edit />
     </div>
 
-    <p class="collapse tab"
-       data-collapses=project{{project['id']}}
+    <p class="collapse tabpane"
+       data-collapse=project{{project['id']}}
        data-tabs=project{{project['id']}}
        data-tabpane=view>
         {{project['description']}}
     </p>
 
-    <div class='collapse tab'
-          data-collapses=project{{project['id']}}
+    <div class='collapse tabpane'
+          data-collapse=project{{project['id']}}
           data-tabs=project{{project['id']}}
           data-tabpane=edit>
         <a class='tab-selector'
@@ -34,8 +34,8 @@
            data-tabpane=view>View
         </a>
     </div>
-    <div class='collapse tab'
-          data-collapses=project{{project['id']}}
+    <div class='collapse tabpane'
+          data-collapse=project{{project['id']}}
           data-tabs=project{{project['id']}}
           data-tabpane=view>
         <a class='tab-selector'
@@ -45,8 +45,8 @@
     </div>
 
     <form method=POST action="{{app.get_url('ed_project', id=project['id'])}}"
-          class="collapse tab"
-          data-collapses=project{{project['id']}}
+          class="collapse tabpane"
+          data-collapse=project{{project['id']}}
           data-tabs=project{{project['id']}}
           data-tabpane=edit>
         <input type=text name=name value={{project['name']}} />
