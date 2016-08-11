@@ -1,0 +1,5 @@
+p {
+    /* paragraph spacing should not be a question of margins,
+       because that apparently bleeds out over a container */
+    margin: 0px;
+}

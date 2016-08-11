@@ -3,6 +3,7 @@ from bottle import Bottle
 
 app = Bottle(catchall=False)
 bottle.BaseTemplate.defaults['app'] = app
+bottle.BaseTemplate.defaults['request'] = bottle.request
 
 
 

@@ -1,0 +1,19 @@
+.collapse-head > input[type=checkbox] {
+    display: none;
+}
+.collapse-selector {
+    cursor: pointer;
+}
+.collapse-closed {
+    display: none;
+}
+
+.tab-head > input[type=radio] {
+    display: none;
+}
+.tab-selector {
+    cursor: pointer;
+}
+.tab-closed {
+    display: none;
+}

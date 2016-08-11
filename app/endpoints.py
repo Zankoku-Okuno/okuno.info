@@ -15,7 +15,13 @@ def dbfile():
     return "db/{}.db".format(request.username)
 
 
+
 # ====== Administrivia ======
+
+@app.route('/static/<path:path>', name='static')
+def static(path):
+    """static file fallback"""
+    return bottle.static_file(path, root='static')
 
 @app.route('/', name='index')
 @view("index.html")
