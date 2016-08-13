@@ -1,4 +1,4 @@
-.collapse-head > input[type=checkbox] {
+.collapse-head input[type=checkbox] {
     display: none;
 }
 .collapse-selector {

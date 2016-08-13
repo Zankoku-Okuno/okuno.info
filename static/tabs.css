@@ -1,4 +1,4 @@
-.tabs-head > input[type=radio] {
+.tabs-head input[type=radio] {
     display: none;
 }
 .tab-selector {
