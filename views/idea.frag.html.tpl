@@ -7,22 +7,6 @@
            data-tabs=idea{{idea['id']}}
            value=edit />
 </div>
-<div class='tabpane'
-      data-tabs=idea{{idea['id']}}
-      data-tabpane=edit>
-    <a class='tab-selector'
-       data-tabs=idea{{idea['id']}}
-       data-tabpane=view>View
-    </a>
-</div>
-<div class='tabpane'
-      data-tabs=idea{{idea['id']}}
-      data-tabpane=view>
-    <a class='tab-selector'
-       data-tabs=idea{{idea['id']}}
-       data-tabpane=edit>Edit
-    </a>
-</div>
 
 <div class="tabpane"
      data-tabs=idea{{idea['id']}}
@@ -38,11 +22,19 @@
         %end
     </p>
     <!--TODO date of creation-->
+    <a class='tab-selector'
+       data-tabs=idea{{idea['id']}}
+       data-tabpane=edit>edit
+    </a>
 </div>
 
 <div class="tabpane"
      data-tabs=idea{{idea['id']}}
      data-tabpane=edit>
+    <a class='tab-selector'
+       data-tabs=idea{{idea['id']}}
+       data-tabpane=view>back
+    </a><br/>
     <form method=POST action={{app.get_url('ed_idea', id=idea['id'])}}>
         <textarea required name=text
                   rows=5 cols=60 style="resize: both;"

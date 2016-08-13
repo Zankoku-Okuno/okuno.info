@@ -27,7 +27,7 @@
       data-tabpane=edit>
     <a class='tab-selector'
        data-tabs=project{{project['id']}}
-       data-tabpane=view>View
+       data-tabpane=view>back
     </a>
 </div>
 <div class='collapse tabpane'
@@ -36,7 +36,7 @@
       data-tabpane=view>
     <a class='tab-selector'
        data-tabs=project{{project['id']}}
-       data-tabpane=edit>Edit
+       data-tabpane=edit>edit
     </a>
 </div>
 
