@@ -62,23 +62,29 @@ def logout_button():
 def ideas():
     with sql(dbfile()) as db:
         dayAgo = (datetime.utcnow() - timedelta(hours=16)).strftime(timeformat)
-        ideas = db.execute("""SELECT * FROM idea
+        ideas = db.execute("""SELECT idea.*, project.name as project_name
+                              FROM idea LEFT JOIN project
+                                        ON (project.id = idea.project_id)
                               WHERE (project_id IS NULL AND crankfile = 0)
                                  OR sorted > ?
                               ORDER BY created ASC;""", (dayAgo,)).fetchall()
-        projects = db.execute("""SELECT * FROM project
+        projects = db.execute("""SELECT id, name FROM project
                                  ORDER BY name ASC;""").fetchall()
-    return dict(ideas=ideas, projects=projects)
+    return dict(ideas=ideas, sort_to=projects)
 
 @app.get('/ideas/crankfile', name='crankfile')
 @login_required
 @view("crankfile.html")
 def crankfile():
     with sql(dbfile()) as db:
-        ideas = db.execute("""SELECT * FROM idea
+        ideas = db.execute("""SELECT idea.*, project.name as project_name
+                              FROM idea LEFT JOIN project
+                                        ON (project.id = idea.project_id)
                               WHERE crankfile != 0
                               ORDER BY created DESC;""").fetchall()
-    return dict(ideas=ideas)
+        projects = db.execute("""SELECT id, name FROM project
+                                 ORDER BY name ASC;""").fetchall()
+    return dict(ideas=ideas, sort_to=projects)
 
 @app.post('/ideas', name='mk_idea')
 @login_required
@@ -108,12 +114,15 @@ def mk_idea():
 @view("idea.html")
 def idea(id):
     with sql(dbfile()) as db:
-        idea = db.execute("""SELECT * FROM idea WHERE id = ?;""", (id,)).fetchone()
+        idea = db.execute("""SELECT idea.*, project.name as project_name
+                             FROM idea LEFT JOIN project
+                                       ON (project.id = idea.project_id)
+                             WHERE idea.id = ?;""", (id,)).fetchone()
         if idea is None:
             bottle.abort(404)
         projects = db.execute("""SELECT * FROM project
                                  ORDER BY name ASC;""").fetchall()
-    return dict(idea=idea, projects=projects)
+    return dict(idea=idea, sort_to=projects)
 
 @app.post('/idea/<id:int>', name='ed_idea')
 @login_required
@@ -178,7 +187,8 @@ def project(id):
                               FROM idea LEFT JOIN project
                                         ON (project.id = idea.project_id)
                               WHERE project_id = ?;""", (id,)).fetchall()
-        projects = db.execute("""SELECT id, name FROM project;""").fetchall()
+        projects = db.execute("""SELECT id, name FROM project
+                                 ORDER BY name ASC;""").fetchall()
     return dict(project=project, actions=actions, ideas=ideas, sort_to=projects)
 
 @app.post("/projects", name='mk_project')

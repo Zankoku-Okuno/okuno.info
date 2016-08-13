@@ -3,12 +3,10 @@
 
 <p><a href={{app.get_url('ideas')}}>all ideas</a></p>
 
-<ul>
+<ul class='ideas'>
     %for idea in ideas:
-    <li class='.idea'>
-        <p>{{idea['text']}}
-        <small><a href={{app.get_url('idea', id=idea['id'])}}>edit</a></small></p>
-        <!--TODO date of creation-->
+    <li class='idea'>
+    	%include("idea.frag.html", idea=idea, sort_to=sort_to)
     </li>
     %end
 </ul>

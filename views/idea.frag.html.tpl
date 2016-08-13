@@ -37,6 +37,7 @@
         sorted to: {{idea['project_name']}}
         %end
     </p>
+    <!--TODO date of creation-->
 </div>
 
 <div class="tabpane"
