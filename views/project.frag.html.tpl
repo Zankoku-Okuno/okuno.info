@@ -14,12 +14,12 @@
            value=edit />
 </div>
 
-<p class="collapse tabpane"
+<pre class="collapse tabpane"
    data-collapse=project{{project['id']}}
    data-tabs=project{{project['id']}}
    data-tabpane=view>
     {{project['description']}}
-</p>
+</pre>
 
 <div class='collapse tabpane'
       data-collapse=project{{project['id']}}
