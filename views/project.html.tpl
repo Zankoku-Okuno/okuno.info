@@ -1,73 +1,33 @@
 %rebase('base.html.tpl')
 <h2>Project</h2>
 
-<div style="border: thin black solid; border-radius: 5px;">
-    <h3 class="collapse-head collapse-selector"
-        data-collapse=project{{project['id']}}>
-            <input type=checkbox checked />
-            {{project['name']}}
-    </h3>
-    <div class="collapse tabs-head"
-         data-collapse=project{{project['id']}}
-         data-tabs=project{{project['id']}}>
-        <input type=radio name=tab-project{{project['id']}}
-               data-tabs=project{{project['id']}}
-               value=view checked />
-        <input type=radio name=tab-project{{project['id']}}
-               data-tabs=project{{project['id']}}
-               value=edit />
-    </div>
-
-    <p class="collapse tabpane"
-       data-collapse=project{{project['id']}}
-       data-tabs=project{{project['id']}}
-       data-tabpane=view>
-        {{project['description']}}
-    </p>
-
-    <div class='collapse tabpane'
-          data-collapse=project{{project['id']}}
-          data-tabs=project{{project['id']}}
-          data-tabpane=edit>
-        <a class='tab-selector'
-           data-tabs=project{{project['id']}}
-           data-tabpane=view>View
-        </a>
-    </div>
-    <div class='collapse tabpane'
-          data-collapse=project{{project['id']}}
-          data-tabs=project{{project['id']}}
-          data-tabpane=view>
-        <a class='tab-selector'
-           data-tabs=project{{project['id']}}
-           data-tabpane=edit>Edit
-        </a>
-    </div>
-
-    <form method=POST action="{{app.get_url('ed_project', id=project['id'])}}"
-          class="collapse tabpane"
-          data-collapse=project{{project['id']}}
-          data-tabs=project{{project['id']}}
-          data-tabpane=edit>
-        <input type=text name=name value={{project['name']}} />
-        <br/>
-        <textarea name=description
-                  rows=5 cols=60 style="resize: both;">{{project['description']}}</textarea>
-        <br/>
-        <button type=submit>Edit</button>
-    </form>
-    
+<div class='project_desc'>
+    %include('project.frag.html', project=project)
 </div>
 
 %if ideas:
 <h3>Ideas</h3>
-<ul>
+<ul class='ideas'>
     %for idea in ideas:
-    <li>
-        <pre>{{idea['text']}}
-  <small><a href={{app.get_url('idea', id=idea['id'])}} >edit</a></small></pre>
+    <li class='idea'>
+        %include("idea.frag.html", idea=idea)
     </li>
     %end
+    <li class='idea'>
+        <div class='collapse-head collapse-selector'
+             data-collapse=new-idea>
+            <input type=checkbox>New Idea
+        </div>
+        <form method=POST action="{{app.get_url('mk_idea')}}"
+              class='collapse'
+              data-collapse=new-idea>
+            <input type=hidden name=project_id value={{project['id']}} />
+            <textarea name=text required
+                      rows=5 cols=60 style="resize: both;"
+                      placeholder="new idea"></textarea><br/>
+            <button type=submit>Create</button>
+        </form>
+    </li>
 </ul>
 %end
 

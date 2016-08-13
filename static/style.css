@@ -1,0 +1,13 @@
+.tab-selector {
+	color: blue;
+	text-decoration: underline;
+}
+
+ul.ideas {
+	list-style: none;
+	padding-left: 0px;
+}
+.project_desc, li.idea {
+	border: thin black solid;
+	border-radius: 5px;
+}

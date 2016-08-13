@@ -84,12 +84,21 @@ def crankfile():
 @login_required
 def mk_idea():
     now = datetime.utcnow().strftime(timeformat)
+    project_id = request.params.get('project_id')
     text = request.params.get('text')
     if not text:
         bottle.abort(400, "Missing `text` field")
 
     with sql(dbfile()) as db:
-        id = db.execute("""INSERT INTO idea (text, created) VALUES (?, ?)""", (text, now)).lastrowid
+        if project_id is None:
+            id = db.execute("""INSERT INTO idea (text, created)
+                               VALUES (?, ?)""", (text, now)).lastrowid
+        elif project_id == 'crankfile':
+            id = db.execute("""INSERT INTO idea (text, crankfile, created, sorted)
+                               VALUES (?, ?, ?, ?)""", (text, 1, now, now)).lastrowid
+        else:
+            id = db.execute("""INSERT INTO idea (text, project_id, created, sorted)
+                               VALUES (?, ?, ?, ?)""", (text, project_id, now, now)).lastrowid
     
     next = request.headers.get('Referer', app.get_url('idea', id=id))
     bottle.redirect(next)
@@ -165,8 +174,12 @@ def project(id):
         actions = db.execute("""SELECT * FROM action
                                 WHERE project_id = ?
                                 ORDER BY completed ASC;""", (id,)).fetchall()
-        ideas = db.execute("""SELECT * FROM idea WHERE project_id = ?;""", (id,)).fetchall()
-    return dict(project=project, actions=actions, ideas=ideas)
+        ideas = db.execute("""SELECT idea.*, project.name as project_name
+                              FROM idea LEFT JOIN project
+                                        ON (project.id = idea.project_id)
+                              WHERE project_id = ?;""", (id,)).fetchall()
+        projects = db.execute("""SELECT id, name FROM project;""").fetchall()
+    return dict(project=project, actions=actions, ideas=ideas, sort_to=projects)
 
 @app.post("/projects", name='mk_project')
 @login_required
