@@ -45,10 +45,10 @@
       data-collapse=project{{project['id']}}
       data-tabs=project{{project['id']}}
       data-tabpane=edit>
-    <input type=text name=name value={{project['name']}} />
+    <input type=text name=name value="{{project['name']}}" />
     <br/>
     <textarea name=description
-              rows=5 cols=60 style="resize: both;">{{project['description']}}</textarea>
+              rows=5 cols=60 style="resize: both;">{{project.description}}</textarea>
     <br/>
     <button type=submit>Edit</button>
 </form>

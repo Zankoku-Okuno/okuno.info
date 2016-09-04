@@ -33,7 +33,7 @@
             <small class='tab-selector'
                    data-tabs=project{{project['id']}}
                    data-tabpane=view>back</small><br/>
-            <input type=text name=name value={{project['name']}} />
+            <input type=text name=name value="{{project.name}}" />
             <br/>
             <textarea name=description
                       rows=5 cols=60 style="resize: both;">{{project['description']}}</textarea>

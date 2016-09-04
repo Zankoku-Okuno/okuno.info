@@ -127,12 +127,7 @@ def ed_idea(id):
 @view("projects.html")
 def projects():
     with sql(dbfile()) as db:
-        rows = db.execute("""SELECT project.*, count(action.id) as actions_count
-                             FROM project LEFT JOIN action
-                                          ON (project.id = action.project_id
-                                              AND action.completed IS NULL)
-                             GROUP BY project.id
-                             ORDER BY project.name ASC;""").fetchall()
+        rows = Project(db).all()
     return dict(projects=rows)
 
 @app.get('/projects/<id:int>', name='project')
@@ -140,28 +135,19 @@ def projects():
 @view("project.html")
 def project(id):
     with sql(dbfile()) as db:
-        project = Project(db).by_id(id) or bottle.abort(404, "No such project")
-            
-        actions = db.execute("""SELECT * FROM action
-                                WHERE project_id = ?
-                                ORDER BY completed ASC;""", (id,)).fetchall()
-        ideas = db.execute("""SELECT idea.*, project.name as project_name
-                              FROM idea LEFT JOIN project
-                                        ON (project.id = idea.project_id)
-                              WHERE project_id = ?;""", (id,)).fetchall()
-        projects = Project(db).all_names()
-    return dict(project=project, actions=actions, ideas=ideas, sort_to=projects)
+        project = Project(db).by_id_full(id) or bottle.abort(404, "No such project")
+        sort_to = Project(db).all_names()
+    #FIXME send actions & ideas along with the project object
+    return dict(project=project, actions=project.actions, ideas=project.ideas, sort_to=sort_to)
 
 @app.post("/projects", name='mk_project')
 @login_required
 def mk_project():
-    name = request.params.get('name')
-    if not name:
-        bottle.abort(400, "Missing `name` field")
+    name = request.params.get('name') or bottle.abort(400, "Missing `name` field")
     description = request.params.get('description', "")
 
     with sql(dbfile()) as db:
-        id = db.execute("""INSERT INTO project (name, description) VALUES (?, ?);""", (name, description)).lastrowid
+        id = Project(db).create(name=name, description=description)
 
     next = request.headers.get('Referer', app.get_url('project', id=id))
     bottle.redirect(next)
@@ -170,16 +156,10 @@ def mk_project():
 @login_required
 def ed_project(id):
     with sql(dbfile()) as db:
-        project = db.execute("""SELECT * FROM project WHERE id = ?;""", (id,)).fetchone()
-        if project is None:
-            bottle.abort(404)
+        project = Project(db).by_id(id) or bottle.abort(404)
         name = request.params.get('name')
         description = request.params.get('description')
-
-        if name:
-            db.execute("""UPDATE project SET name = ? WHERE id = ?;""", (name, id,))
-        if description:
-            db.execute("""UPDATE project SET description = ? WHERE id = ?;""", (description, id,))
+        Project(db).update_by_id(id, name, description)
 
     next = request.headers.get('Referer', app.get_url('action', id=id))
     bottle.redirect(next)

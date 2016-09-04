@@ -49,6 +49,13 @@ class Idea(Model):
     def delete_by_id(self, id):
         self._db.execute("""DELETE FROM idea WHERE id = ?;""", (id,))
 
+    def by_project_all(self, id):
+        return self._db.execute(
+            """SELECT idea.*, project.name as project_name
+               FROM idea LEFT JOIN project ON (project.id = idea.project_id)
+               WHERE project_id = ?;""",
+            (id,)
+        ).fetchall()
 
     def unsorted_all(self):
         minAgo = (datetime.utcnow() - timedelta(minutes=1)).strftime(timeformat)
@@ -81,10 +88,53 @@ class Project(Model):
             (id,)
         ).fetchone()
 
+    def all(self):
+        return self._db.execute(
+            """SELECT project.*, count(action.id) as actions_count
+               FROM project LEFT JOIN action
+                            ON (project.id = action.project_id
+                                AND action.completed IS NULL)
+               GROUP BY project.id
+               ORDER BY project.name ASC;""").fetchall()
+
+    def create(self, name, description):
+        return self._db.execute(
+            """INSERT INTO project (name, description) VALUES (?, ?);""",
+            (name, description)
+        ).lastrowid
+
+    def update_by_id(self, id, name=None, description=None):
+        if name:
+            self._db.execute("""UPDATE project SET name = ? WHERE id = ?;""", (name, id,))
+        if description is not None:
+            self._db.execute("""UPDATE project SET description = ? WHERE id = ?;""", (description, id,))
+
+
+    def by_id_full(self, id):
+        project = Project(self._db).by_id(id)
+        if project is None:
+            return None
+        project.actions = Action(self._db).by_project_all(project.id)
+        project.ideas = Idea(self._db).by_project_all(project.id)
+        return project
+
     def all_names(self):
         return self._db.execute(
             """SELECT id, name FROM project
                ORDER BY name ASC;"""
+        ).fetchall()
+
+
+
+
+
+class Action(Model):
+    def by_project_all(self, id):
+        return self._db.execute(
+            """SELECT * FROM action
+               WHERE project_id = ?
+               ORDER BY completed ASC;""",
+            (id,)
         ).fetchall()
 
 
