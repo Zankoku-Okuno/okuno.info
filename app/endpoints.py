@@ -195,6 +195,9 @@ def ed_action(id):
         completed = request.params.get('completed')
         if completed is not None:
             completed = completed.lower() in {'1', 'yes', 'true'}
+        star = request.params.get('star')
+        if star is not None:
+            star = star.lower() in {'1', 'yes', 'true'}
         text = request.params.get('text')
         delete = request.params.get('delete', 'no')
 
@@ -202,7 +205,7 @@ def ed_action(id):
             Action(db).delete_by_id(id)
             bottle.redirect(app.get_url('project', id=action.project_id))
         else:
-            Action(db).update_by_id(id, completed=completed, text=text)
+            Action(db).update_by_id(id, completed=completed, text=text, star=star)
 
 
     next = request.headers.get('Referer', app.get_url('action', id=id))

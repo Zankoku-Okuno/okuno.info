@@ -13,6 +13,11 @@
       data-tabs=action{{action.id}}
       data-tabpane=view>
     %if action.completed is None:
+      %if action.starred:
+    <button type=submit name=star value=0>★</button>
+      %else:
+    <button type=submit name=star value=1>☆</button>
+      %end
     <button type=submit name=completed value=1>▢</button>
     %else:
     ✓
@@ -29,6 +34,11 @@
      data-tabpane=edit>
     <form method=POST action={{app.get_url('ed_action', id=action.id)}}>
         %if action.completed is None:
+          %if action.starred:
+        <button type=submit name=star value=0>★</button>
+          %else:
+        <button type=submit name=star value=1>☆</button>
+          %end
         <button type=submit name=completed value=1>▢ | Complete</button>
         %else:
         <button type=submit name=completed value=0>✓ | Reopen</button>

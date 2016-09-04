@@ -145,7 +145,12 @@ class Action(Model):
             (project, text, now)
         ).lastrowid
 
-    def update_by_id(self, id, completed=None, text=None):
+    def update_by_id(self, id, completed=None, text=None, star=None):
+        if star is not None:
+            self._db.execute(
+                """UPDATE action SET starred = ? WHERE id = ?;""",
+                (star, id)
+            )
         if completed is not None:
             completed = datetime.utcnow().strftime(timeformat) if completed else None
             self._db.execute(
@@ -168,7 +173,7 @@ class Action(Model):
         return self._db.execute(
             """SELECT * FROM action
                WHERE project_id = ?
-               ORDER BY completed ASC;""",
+               ORDER BY completed ASC, starred DESC;""",
             (id,)
         ).fetchall()
 
