@@ -2,6 +2,7 @@ import bottle
 from bottle import request, response, view
 from .framework import app, sql
 from .auth import login, logout, login_required
+from .models import *
 
 from urllib.parse import quote_plus as percent_encode, unquote_plus as percent_decode
 import json
@@ -54,6 +55,7 @@ def logout_button():
     logout()
     bottle.redirect(app.get_url('index'))
 
+
 # ====== Ideas ======
 
 @app.get('/ideas', name='ideas')
@@ -61,15 +63,8 @@ def logout_button():
 @view("ideas.html")
 def ideas():
     with sql(dbfile()) as db:
-        minAgo = (datetime.utcnow() - timedelta(minutes=1)).strftime(timeformat)
-        ideas = db.execute("""SELECT idea.*, project.name as project_name
-                              FROM idea LEFT JOIN project
-                                        ON (project.id = idea.project_id)
-                              WHERE (project_id IS NULL AND crankfile = 0)
-                                 OR sorted > ?
-                              ORDER BY created ASC;""", (minAgo,)).fetchall()
-        projects = db.execute("""SELECT id, name FROM project
-                                 ORDER BY name ASC;""").fetchall()
+        ideas = Idea(db).unsorted_all()
+        projects = Project(db).all_names()
     return dict(ideas=ideas, sort_to=projects)
 
 @app.get('/ideas/crankfile', name='crankfile')
@@ -77,35 +72,21 @@ def ideas():
 @view("crankfile.html")
 def crankfile():
     with sql(dbfile()) as db:
-        ideas = db.execute("""SELECT idea.*, project.name as project_name
-                              FROM idea LEFT JOIN project
-                                        ON (project.id = idea.project_id)
-                              WHERE crankfile != 0
-                              ORDER BY created DESC;""").fetchall()
-        projects = db.execute("""SELECT id, name FROM project
-                                 ORDER BY name ASC;""").fetchall()
+        ideas = Idea(db).crankfile_all()
+        projects = Project(db).all_names()
     return dict(ideas=ideas, sort_to=projects)
 
 @app.post('/ideas', name='mk_idea')
 @login_required
 def mk_idea():
-    now = datetime.utcnow().strftime(timeformat)
-    project_id = request.params.get('project_id')
-    text = request.params.get('text')
-    if not text:
-        bottle.abort(400, "Missing `text` field")
-
     with sql(dbfile()) as db:
-        if project_id is None:
-            id = db.execute("""INSERT INTO idea (text, created)
-                               VALUES (?, ?)""", (text, now)).lastrowid
-        elif project_id == 'crankfile':
-            id = db.execute("""INSERT INTO idea (text, crankfile, created, sorted)
-                               VALUES (?, ?, ?, ?)""", (text, 1, now, now)).lastrowid
-        else:
-            id = db.execute("""INSERT INTO idea (text, project_id, created, sorted)
-                               VALUES (?, ?, ?, ?)""", (text, project_id, now, now)).lastrowid
-    
+        project_id = request.params.get('project_id')
+        text = request.params.get('text') or bottle.abort(400, "Missing `text` field")
+        #FIXME check that the project exists
+
+        id = Idea(db).create(project_id, text)
+        #FIXME check that creation succeeded
+
     next = request.headers.get('Referer', app.get_url('idea', id=id))
     bottle.redirect(next)
 
@@ -114,48 +95,30 @@ def mk_idea():
 @view("idea.html")
 def idea(id):
     with sql(dbfile()) as db:
-        idea = db.execute("""SELECT idea.*, project.name as project_name
-                             FROM idea LEFT JOIN project
-                                       ON (project.id = idea.project_id)
-                             WHERE idea.id = ?;""", (id,)).fetchone()
+        idea = Idea(db).by_id(id)
         if idea is None:
             bottle.abort(404)
-        projects = db.execute("""SELECT * FROM project
-                                 ORDER BY name ASC;""").fetchall()
+        projects = Project(db).all_names()
     return dict(idea=idea, sort_to=projects)
 
 @app.post('/idea/<id:int>', name='ed_idea')
 @login_required
 def ed_idea(id):
     with sql(dbfile()) as db:
-        idea = db.execute("""SELECT id FROM idea WHERE id = ?;""", (id,)).fetchone()
-        if idea is None:
-            bottle.abort(400, "Missing `idea` field")
+        idea = Idea(db).by_id(id) or bottle.abort(404)
         text = request.params.get('text', "")
-        project = request.params.get('project')
+        project = request.params.get('project') #FIXME check that the project exists
         delete = request.params.get('delete', 'no')
-        now = datetime.utcnow().strftime(timeformat)
-
-        if project is not None:
-            if project == 'crankfile':
-                db.execute("""UPDATE idea SET project_id = NULL, crankfile = 1, sorted = ?
-                              WHERE id = ?;""", (now, idea['id']))
-            else:
-                project = db.execute("""SELECT id FROM project WHERE id = ?;""", (project,)).fetchone()
-                if project is None:
-                    bottle.abort(404)
-                db.execute("""UPDATE idea SET project_id = ?, crankfile = 0, sorted = ?
-                              WHERE id = ?;""", (project['id'], now, idea['id']))
-        if text:
-            db.execute("""UPDATE idea SET text = ? WHERE id = ?;""", (text, id,))
 
         if delete.lower() in {'1', 'yes', 'true'}:
-            db.execute("""DELETE FROM idea WHERE id = ?;""", (id,))
+            Idea(db).delete_by_id(idea.id)
             bottle.redirect(app.get_url('index')) #FIXME more precise redirect
-
-    next = request.headers.get('Referer', app.get_url('idea', id=id))
-    bottle.redirect(next)
-
+        else:
+            Idea(db).update_by_id(idea.id, project=project, text=text)
+            next = request.headers.get('Referer', app.get_url('idea', id=idea.id))
+            bottle.redirect(next)
+        #FIXME check that edit/delete succeeded
+            
 
 # ====== Projects ======
 

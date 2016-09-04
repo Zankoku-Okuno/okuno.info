@@ -10,10 +10,25 @@ bottle.BaseTemplate.defaults['request'] = bottle.request
 from contextlib import contextmanager
 import bottle, sqlite3
 
+class Model:
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def __getitem__(self, k):
+        return getattr(self, k)
+
+    @staticmethod
+    def from_sql(cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return Model(**d)
+
 @contextmanager
 def sql(dbfilename):
     db = sqlite3.connect(dbfilename)
-    db.row_factory = sqlite3.Row
+    db.row_factory = Model.from_sql
     try:
         yield db
         db.commit()
