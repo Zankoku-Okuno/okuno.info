@@ -43,14 +43,14 @@ function init_collapse(container) {
     function update_collapse(dom) {
         var add = dom.checkbox.checked ? 'collapse-open' : 'collapse-closed'
         var rem = dom.checkbox.checked ? 'collapse-closed' : 'collapse-open'
-        dom.blocks.forEach((block) => {
+        dom.blocks.forEach(function (block) {
             block.classList.add(add)
             block.classList.remove(rem)
         })
     }
 
     var items = container.querySelectorAll('.collapse-head')
-    items.forEach((item) => {
+    items.forEach(function (item) {
         var collapse_id = item.getAttribute('data-collapse')
         var dom = {
             head: item,

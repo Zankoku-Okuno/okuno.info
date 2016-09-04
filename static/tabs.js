@@ -50,10 +50,10 @@ Functions
 
 function init_tabs(container) {
     function update_tabs(dom) {
-        dom.radiogroup.forEach((radio) => {
+        dom.radiogroup.forEach(function (radio) {
             if (radio.checked) {
                 var pane_id = radio.getAttribute('value')
-                dom.panes.forEach((pane) => {
+                dom.panes.forEach(function (pane) {
                     if (pane.getAttribute('data-tabpane') === pane_id) {
                         pane.classList.add('tab-open')
                         pane.classList.remove('tab-closed')
@@ -68,7 +68,7 @@ function init_tabs(container) {
     }
 
     var items = container.querySelectorAll('.tabs-head')
-    items.forEach((item) => {
+    items.forEach(function (item) {
         var tab_id = item.getAttribute('data-tabs')
         var dom = {
             head: item,
@@ -78,13 +78,13 @@ function init_tabs(container) {
         }
         update_tabs(dom)
 
-        dom.radiogroup.forEach((radio) => {
+        dom.radiogroup.forEach(function (radio) {
             radio.addEventListener('change', function (e) { update_tabs(dom) })
         })
-        dom.selectors.forEach((selector) => {
+        dom.selectors.forEach(function (selector) {
             var pane_id = selector.getAttribute('data-tabpane')
             selector.addEventListener('click', function (e) {
-                dom.radiogroup.forEach((radio) => {
+                dom.radiogroup.forEach(function (radio) {
                     if (radio.getAttribute('value') === pane_id) {
                         radio.checked = true
                         radio.dispatchEvent(new Event('change'))
