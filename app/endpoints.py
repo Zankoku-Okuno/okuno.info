@@ -224,6 +224,48 @@ def ed_project(id):
     bottle.redirect(next)
 
 
+# ====== Technologies ======
+
+@app.get("/technologies", name="techs")
+@login_required
+@view("techs.html")
+def techs():
+    with sql(dbfile()) as db:
+        rows = db.execute("""SELECT * FROM technology;""").fetchall()
+    return dict(techs=rows)
+
+@app.post("/technologies", name='mk_tech')
+@login_required
+def mk_tech():
+    name = request.params.get('name')
+    if not name:
+        bottle.abort(400, "Missing `name` field")
+
+    with sql(dbfile()) as db:
+        project_name = "learn {}".format(name)
+        project_id = db.execute("""INSERT INTO project (name, description) VALUES (?, ?);""", (project_name, "")).lastrowid
+        id = db.execute("""INSERT INTO technology (name, learn_project_id) VALUES (?, ?);""", (name, project_id)).lastrowid
+
+    next = request.headers.get('Referer', app.get_url('tech', id=id))
+    bottle.redirect(next)
+
+@app.get("/technology/<id:int>", name="tech")
+@login_required
+@view("tech.html")
+def tech(id):
+    with sql(dbfile()) as db:
+        tech = db.execute("""SELECT technology.*,
+                                    project.name as learn_project_name
+                               FROM technology JOIN project ON project.id = learn_project_id
+                               WHERE technology.id = ?;""", (id,)).fetchone()
+        if action is None:
+            bottle.abort(404)
+
+        notes = db.execute("""SELECT * FROM tech_notes WHERE technology_id = ? ORDER BY quick_ix ASC""", (id,)).fetchall()
+
+    return dict(tech=tech, notes=notes)
+
+
 # ====== Actions ======
 
 @app.get("/action/<id:int>", name="action")
