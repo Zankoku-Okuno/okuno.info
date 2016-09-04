@@ -140,9 +140,8 @@ def projects():
 @view("project.html")
 def project(id):
     with sql(dbfile()) as db:
-        project = db.execute("""SELECT * FROM project WHERE id = ?;""", (id,)).fetchone()
-        if project is None:
-            bottle.abort(404, "No such project")
+        project = Project(db).by_id(id) or bottle.abort(404, "No such project")
+            
         actions = db.execute("""SELECT * FROM action
                                 WHERE project_id = ?
                                 ORDER BY completed ASC;""", (id,)).fetchall()
@@ -150,8 +149,7 @@ def project(id):
                               FROM idea LEFT JOIN project
                                         ON (project.id = idea.project_id)
                               WHERE project_id = ?;""", (id,)).fetchall()
-        projects = db.execute("""SELECT id, name FROM project
-                                 ORDER BY name ASC;""").fetchall()
+        projects = Project(db).all_names()
     return dict(project=project, actions=actions, ideas=ideas, sort_to=projects)
 
 @app.post("/projects", name='mk_project')
@@ -254,21 +252,17 @@ def ed_action(id):
 @view("epigrams.html")
 def epigrams():
     with sql(dbfile()) as db:
-        epigrams = db.execute("""SELECT * FROM epigram;""").fetchall()
+        epigrams = Epigram(db).all()
     return dict(epigrams=epigrams)
 
 @app.post("/epigrams", name='mk_epigram')
 @login_required
 def mk_epigram():
-    text = request.params.get('text', "")
-    if not text:
-        bottle.abort(400, "Missing `text` field")
-    credit = request.params.get('credit', "")
-    if not credit:
-        credit = None
+    text = request.params.get('text', "") or bottle.abort(400, "Missing `text` field")
+    credit = request.params.get('credit') or None
 
     with sql(dbfile()) as db:
-        id = db.execute("""INSERT INTO epigram (text, credit) VALUES (?, ?);""", (text, credit)).lastrowid
+        id = Epigram(db).create(text, credit)
 
     next = request.headers.get('Referer', app.get_url('epigrams'))
     bottle.redirect(next)
@@ -278,26 +272,18 @@ def mk_epigram():
 @view("epigram.html")
 def epigram(id):
     with sql(dbfile()) as db:
-        epigram = db.execute("""SELECT * FROM epigram WHERE id = ?;""", (id,)).fetchone()
-        if epigram is None:
-            bottle.abort(404)
+        epigram = Epigram(db).by_id(id) or bottle.abort(404)
     return dict(epigram=epigram)
 
 @app.post("/epigram/<id:int>", name='ed_epigram')
 @login_required
 def ed_epigram(id):
     with sql(dbfile()) as db:
-        epigram = db.execute("""SELECT * FROM epigram WHERE id = ?;""", (id,)).fetchone()
-        if epigram is None:
-            bottle.abort(404)
+        epigram = Epigram(db).by_id(id) or bottle.abort(404)
         text = request.params.get('text')
         credit = request.params.get('credit')
-
-        if text:
-            db.execute("""UPDATE epigram SET text = ? WHERE id = ?;""", (text, id))
-        if credit is not None:
-            db.execute("""UPDATE epigram SET credit = ? WHERE id = ?;""", (credit, id))
-
+        Epigram(db).update_by_id(id, text=text, credit=credit)
+        
     next = request.headers.get('Referer', app.get_url('epigram', id=id))
     bottle.redirect(next)
 

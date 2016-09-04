@@ -1,3 +1,4 @@
+from .framework import Model
 from datetime import datetime, timedelta
 
 # FIXME put this in the framework or something
@@ -5,10 +6,7 @@ timeformat = "%Y-%m-%dT%H:%M:%S+00:00"
 
 
 
-class Idea:
-    def __init__(self, db):
-        self._db = db
-
+class Idea(Model):
     def by_id(self, id):
         return self._db.execute(
             """SELECT idea.*, project.name as project_name
@@ -72,10 +70,11 @@ class Idea:
                ORDER BY created DESC;"""
         ).fetchall()
 
-class Project:
-    def __init__(self, db):
-        self._db = db
 
+
+
+
+class Project(Model):
     def by_id(self, id):
         return self._db.execute(
             """SELECT * FROM project WHERE id = ?;""",
@@ -87,3 +86,29 @@ class Project:
             """SELECT id, name FROM project
                ORDER BY name ASC;"""
         ).fetchall()
+
+
+
+
+
+class Epigram(Model):
+    def all(self):
+        return self._db.execute("""SELECT * FROM epigram;""").fetchall()
+
+    def by_id(self, id):
+        return self._db.execute(
+            """SELECT * FROM epigram WHERE id = ?;""",
+            (id,)
+        ).fetchone()
+
+    def create(self, text, credit):
+        return self._db.execute(
+            """INSERT INTO epigram (text, credit) VALUES (?, ?);""",
+            (text, credit)
+        ).lastrowid
+
+    def update_by_id(self, id, text=None, credit=None):
+        if text:
+            self._db.execute("""UPDATE epigram SET text = ? WHERE id = ?;""", (text, id))
+        if credit is not None:
+            self._db.execute("""UPDATE epigram SET credit = ? WHERE id = ?;""", (credit, id))

@@ -11,19 +11,22 @@ from contextlib import contextmanager
 import bottle, sqlite3
 
 class Model:
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-    def __getitem__(self, k):
-        return getattr(self, k)
+    def __init__(self, db):
+        self._db = db
 
     @staticmethod
     def from_sql(cursor, row):
         d = {}
         for idx, col in enumerate(cursor.description):
             d[col[0]] = row[idx]
-        return Model(**d)
+        return Row(**d)
+class Row:
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def __getitem__(self, k):
+        return getattr(self, k)
 
 @contextmanager
 def sql(dbfilename):
