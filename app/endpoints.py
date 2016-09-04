@@ -61,13 +61,13 @@ def logout_button():
 @view("ideas.html")
 def ideas():
     with sql(dbfile()) as db:
-        dayAgo = (datetime.utcnow() - timedelta(hours=16)).strftime(timeformat)
+        minAgo = (datetime.utcnow() - timedelta(minutes=1)).strftime(timeformat)
         ideas = db.execute("""SELECT idea.*, project.name as project_name
                               FROM idea LEFT JOIN project
                                         ON (project.id = idea.project_id)
                               WHERE (project_id IS NULL AND crankfile = 0)
                                  OR sorted > ?
-                              ORDER BY created ASC;""", (dayAgo,)).fetchall()
+                              ORDER BY created ASC;""", (minAgo,)).fetchall()
         projects = db.execute("""SELECT id, name FROM project
                                  ORDER BY name ASC;""").fetchall()
     return dict(ideas=ideas, sort_to=projects)
