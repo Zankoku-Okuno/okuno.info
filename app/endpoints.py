@@ -172,27 +172,17 @@ def ed_project(id):
 @view("action.html")
 def action(id):
     with sql(dbfile()) as db:
-        action = db.execute("""SELECT action.*, project.name as project_name
-                               FROM action JOIN project ON project.id = action.project_id
-                               WHERE action.id = ?;""", (id,)).fetchone()
-        if action is None:
-            bottle.abort(404)
+        action = Action(db).by_id(id) or bottle.abort(404)
     return dict(action=action)
 
 @app.post("/actions", name='mk_action')
 @login_required
 def mk_action():
-    project_id = request.params.get('project_id')
-    if project_id is None:
-        bottle.abort(400, "Missing `project_id` field")
-    text = request.params.get('text')
-    if not text:
-        bottle.abort(400, "Missing `text` field")
-    now = datetime.utcnow().strftime(timeformat)
+    project_id = request.params.get('project_id') or bottle.abort(400, "Missing `project_id` field")
+    text = request.params.get('text') or bottle.abort(400, "Missing `text` field")
 
     with sql(dbfile()) as db:
-        id = db.execute("""INSERT INTO action (project_id, text, created)
-                           VALUES (?, ?, ?);""", (project_id, text, now)).lastrowid
+        id = Action(db).create(project=project_id, text=text)
 
     next = request.headers.get('Referer', app.get_url('action', id=id))
     bottle.redirect(next)
@@ -201,25 +191,19 @@ def mk_action():
 @login_required
 def ed_action(id):
     with sql(dbfile()) as db:
-        action = db.execute("""SELECT * FROM action WHERE id = ?;""", (id,)).fetchone()
-        if action is None:
-            bottle.abort(404)
+        action = Action(db).by_id(id) or bottle.abort(404)
         completed = request.params.get('completed')
+        if completed is not None:
+            completed = completed.lower() in {'1', 'yes', 'true'}
         text = request.params.get('text')
         delete = request.params.get('delete', 'no')
 
-        if completed is not None:
-            if completed.lower() in {'1', 'yes', 'true'}:
-                completed = datetime.utcnow().strftime(timeformat)
-            else:
-                completed = None
-            db.execute("""UPDATE action SET completed = ? WHERE id = ?;""", (completed, id))
-        if text:
-            db.execute("""UPDATE action SET text = ? WHERE id = ?;""", (text, id))
-
         if delete.lower() in {'1', 'yes', 'true'}:
-            db.execute("""DELETE FROM action WHERE id = ?;""", (id,))
+            Action(db).delete_by_id(id)
             bottle.redirect(app.get_url('project', id=action['project_id']))
+        else:
+            Action(db).update_by_id(id, completed=completed, text=text)
+
 
     next = request.headers.get('Referer', app.get_url('action', id=id))
     bottle.redirect(next)

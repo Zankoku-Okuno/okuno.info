@@ -129,6 +129,41 @@ class Project(Model):
 
 
 class Action(Model):
+    def by_id(self, id):
+        return self._db.execute(
+            """SELECT action.*, project.name as project_name
+               FROM action JOIN project ON project.id = action.project_id
+               WHERE action.id = ?;""",
+            (id,)
+        ).fetchone()
+
+    def create(self, project, text):
+        now = datetime.utcnow().strftime(timeformat)
+        return self._db.execute(
+            """INSERT INTO action (project_id, text, created)
+               VALUES (?, ?, ?);""",
+            (project, text, now)
+        ).lastrowid
+
+    def update_by_id(self, id, completed=None, text=None):
+        if completed is not None:
+            completed = datetime.utcnow().strftime(timeformat) if completed else None
+            self._db.execute(
+                """UPDATE action SET completed = ? WHERE id = ?;""",
+                (completed, id)
+            )
+        if text:
+            self._db.execute(
+                """UPDATE action SET text = ? WHERE id = ?;""",
+                (text, id)
+            )
+
+    def delete_by_id(self, id):
+        self._db.execute(
+            """DELETE FROM action WHERE id = ?;""",
+            (id,)
+        )
+
     def by_project_all(self, id):
         return self._db.execute(
             """SELECT * FROM action
