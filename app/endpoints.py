@@ -200,7 +200,7 @@ def ed_action(id):
 
         if delete.lower() in {'1', 'yes', 'true'}:
             Action(db).delete_by_id(id)
-            bottle.redirect(app.get_url('project', id=action['project_id']))
+            bottle.redirect(app.get_url('project', id=action.project_id))
         else:
             Action(db).update_by_id(id, completed=completed, text=text)
 

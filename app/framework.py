@@ -25,9 +25,6 @@ class Row:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    def __getitem__(self, k):
-        return getattr(self, k)
-
 @contextmanager
 def sql(dbfilename):
     db = sqlite3.connect(dbfilename)

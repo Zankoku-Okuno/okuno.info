@@ -21,7 +21,7 @@
         <form method=POST action="{{app.get_url('mk_idea')}}"
               class='collapse'
               data-collapse=new-idea>
-            <input type=hidden name=project_id value={{project['id']}} />
+            <input type=hidden name=project_id value={{project.id}} />
             <textarea name=text required
                       rows=5 cols=60 style="resize: both;"
                       placeholder="new idea"></textarea><br/>
@@ -33,7 +33,7 @@
 
 <h3>Actions</h3>
 <form method=POST action="{{app.get_url('mk_action')}}">
-    <input type=hidden name=project_id value={{project['id']}} />
+    <input type=hidden name=project_id value={{project.id}} />
     <textarea required name=text
               rows=5 cols=60 style="resize: both;"
               placeholder="new action"></textarea></br>

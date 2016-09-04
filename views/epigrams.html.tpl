@@ -12,9 +12,9 @@
 <ul>
     %for epigram in epigrams:
     <li class='.epigram'>
-        <p>{{epigram['text']}} <small><a href={{app.get_url('epigram', id=epigram['id'])}}>edit</a></small></p>
-        %if epigram['credit']:
-        <p><small>– {{epigram['credit']}}</small></p>
+        <p>{{epigram.text}} <small><a href={{app.get_url('epigram', id=epigram.id)}}>edit</a></small></p>
+        %if epigram.credit:
+        <p><small>– {{epigram.credit}}</small></p>
         %end
     </li>
     %end
