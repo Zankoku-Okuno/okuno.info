@@ -30,7 +30,13 @@ class Idea(Model):
 
     def update_by_id(self, id, project=None, text=None):
         now = datetime.utcnow().strftime(timeformat)
-        if project == 'crankfile':
+        if project == '':
+            self._db.execute(
+                """UPDATE idea SET project_id = NULL, crankfile = 0, sorted = NULL
+                   WHERE id = ?;""",
+                (id,)
+            )
+        elif project == 'crankfile':
             self._db.execute(
                 """UPDATE idea SET project_id = NULL, crankfile = 1, sorted = ?
                    WHERE id = ?;""",
