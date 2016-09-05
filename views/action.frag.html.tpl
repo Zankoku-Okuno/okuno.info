@@ -12,23 +12,27 @@
       class="tabpane"
       data-tabs=action{{action.id}}
       data-tabpane=view>
-    %if action.completed is None:
-      %if action.starred:
-    <button type=submit name=star value=0>★</button>
+    <div class="view-item">
+      %if action.completed is None:
+      <span>
+        %if action.starred:
+        <button type=submit name=star value=0>★</button>
+        %else:
+        <button type=submit name=star value=1>☆</button>
+        %end
+      </span>
+      <span><button type=submit name=completed value=1>▢</button></span>
       %else:
-    <button type=submit name=star value=1>☆</button>
+      <span>✓</span>
       %end
-    <button type=submit name=completed value=1>▢</button>
-    %else:
-    ✓
-    %end
-    <pre style="display: inline;">{{action.text}}</pre>
-    <small class='tab-selector'
-       data-tabs=action{{action.id}}
-       data-tabpane=edit>edit
-    </small>
+      <div class='md'>{{action.text}}</div>
+      <small class='tab-selector'
+         data-tabs=action{{action.id}}
+         data-tabpane=edit>edit</small>
+    </div>
 </form>
 
+<!-- FIXME for some reason, the edit pane doesn't want to sit at the top of a list item-->
 <div class="tabpane"
      data-tabs=action{{action.id}}
      data-tabpane=edit>
@@ -43,18 +47,14 @@
         %else:
         <button type=submit name=completed value=0>✓ | Reopen</button>
         %end
-        <pre style="display: inline;">{{action.text}}</pre>
+        <button type=submit>Edit</button>
         <small class='tab-selector'
            data-tabs=action{{action.id}}
            data-tabpane=view>back
         </small>
-    </form>
-
-    <form method=POST action={{app.get_url('ed_action', id=action.id)}}>
+        <br/>
         <textarea name=text
                   rows=5 cols=60 style="resize: both;">{{action.text}}</textarea>
-        <br/>
-        <button type=submit>Edit</button>
     </form>
 
     <div style="border: thin red solid;"

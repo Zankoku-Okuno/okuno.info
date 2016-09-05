@@ -9,6 +9,9 @@
         <link rel=stylesheet href='/static/shim.css' />
         <script type='text/javascript' src='/static/shim.js'></script>
 
+        <script type='text/javascript' src='/static/markdown-js/markdown.min.js'></script>
+        <script type='text/javascript' src='/static/markdown.js'></script>
+
         <link rel=stylesheet href='/static/collapse.css' />
         <script type='text/javascript' src='/static/collapse.js'></script>
         <link rel=stylesheet href='/static/tabs.css' />
@@ -20,6 +23,7 @@
         <h1><a href={{app.get_url('index')}}>Okuno.info</a></h1>
         {{!base}}
         <script type="text/javascript">
+            init_markdown(document)
             init_collapse(document)
             init_tabs(document)
         </script>

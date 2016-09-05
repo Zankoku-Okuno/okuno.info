@@ -11,3 +11,21 @@ ul.ideas {
 	border: thin black solid;
 	border-radius: 5px;
 }
+
+li.action {
+	margin-bottom: 0.75em;
+}
+
+.view-item {
+	display: inline-flex;
+	flex-direction: row;
+}
+.view-item > .md {
+	border-left: thin black solid;
+	padding-left: 0.25em;
+	margin-left: 0.25em;
+}
+.view-item > .tab-selector {
+	align-self: flex-end;
+	margin-left: 1em;
+}
