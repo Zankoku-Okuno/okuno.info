@@ -1,0 +1,51 @@
+=== The Database ===
+data Eslite
+	createEslite
+	connectEslite
+
+
+=== Basic Serialization ===
+data Log
+	createLog :: Eslite -> IO Log
+	writeEvent :: Log -> Data -> IO Event
+	view :: Log -> View
+data View
+	size :: Log -> IO UInt
+	window :: (UInt, UInt) -> IO [Event]
+data Event
+	Event -> Timestamp
+	Event -> Data
+data Data
+	record, tagged(variant), list
+
+
+=== Split/Merge Streams and Aggregate ===
+filter :: View -> Filter -> View
+fanIn :: [View] -> View
+partition :: ??? -- but the idea is to have a single view that has multiple sub-views, such as a Table (view) with Rows (sub-views partitioned on pk)
+createView :: Eslite -> View -> IO () -- FIXME give some sort of handle back
+
+data Aggregate
+	type Aggregator = (s, Event -> State s Data)
+	aggregate :: View -> Aggregator -> Aggregate
+	query :: Aggregate -> IO Data
+
+
+=== Scheduling and Caching Processing ===
+
+listen immediately
+batch process by time or number of events
+force a run
+rebuild caches
+cache by time or number of events
+check if an event has propagated through all listeners
+check if a listener is waiting
+
+
+
+
+
+=== Implementation ===
+Data, Event can be single implementations
+the backend should be an existential type like `data Backend = forall a. BackendCtor (BackendClass a => a)
+	the class would have to contain all the createX, config caching/scheduling, query, &c
