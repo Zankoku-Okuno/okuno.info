@@ -34,7 +34,7 @@ throwLeft (Left e) = Exn.throw e
 throwLeft (Right v) = pure v
 
 withConn :: (Sql.Connection -> IO a) -> IO a
-withConn transact = Exn.bracket (Sql.connectPostgreSQL "dbname='hstest' port='5433'") Sql.close transact
+withConn transact = Exn.bracket (Sql.connectPostgreSQL "dbname='hstest' port='5432'") Sql.close transact
 
 
 
