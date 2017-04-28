@@ -16,7 +16,9 @@ data ActionItem = ActionItem
     , created :: UTCTime
     , redline :: Maybe UTCTime
     , deadline :: Maybe UTCTime
+    , finished :: Maybe Finished
     }
+data Finished = Completed UTCTime | Dropped UTCTime
 
 create :: ActionItem -> Db Int
 create ActionItem{..} = undefined

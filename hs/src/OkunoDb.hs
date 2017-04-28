@@ -18,11 +18,12 @@ import Database.PostgreSQL.Simple (Only(..))
 -- models
 import Data.ActionItem
 
+
 main :: IO ()
 main = do
     connstr <- BS.readFile $ "secrets" </> "dbconn"
     let withConn = Exn.bracket (Sql.connectPostgreSQL connstr) Sql.close
-    let files = ("sql" </>) <$> ["001-action_item.sql"]
+    let files = ("sql" </>) <$> ["001-action_item.sql", "002-action_item_finished.sql"]
     sql_scripts <- mapM readFile files
     withConn $ \conn -> do
         Sql.withTransaction conn $ do
