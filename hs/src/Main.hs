@@ -6,6 +6,8 @@ import Data.String (IsString(..))
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import qualified Data.Text.Lazy.Encoding as LT
+import qualified Data.Text.Lazy as LT
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Network.HTTP.Types as Http
@@ -14,6 +16,8 @@ import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.Warp as Warp
 
 import qualified Database.PostgreSQL.Simple as Sql
+import qualified Data.ActionItem as ActionItem
+import Data.Db
 
 import Data.Maybe
 import Data.Map (Map)
@@ -135,22 +139,17 @@ negotiateMedia provide accept = case negotiate provide accept of
 
 
 isIndex :: Location -> Maybe NeptuneApp
-isIndex ([], q) = Just . index_R $ LBS.fromStrict <$> query_queryOne q "name"
+isIndex ([], q) = Just index_R
 isIndex _ = Nothing
 
 
-index_R :: Maybe LBS.ByteString -> NeptuneApp
-index_R name req = withConn $ \conn -> do
+index_R :: NeptuneApp
+index_R req = do
+    action_items <- withConn $ transact $ ActionItem.all
     render <- throwLeft $ negotiateMedia [("text/plain", text_F)] (acceptMedia $ negotiation req)
-
-    [Sql.Only (n :: Int)] <- Sql.query_ conn "SELECT count(*) FROM delme;"
-    Sql.execute conn "INSERT INTO delme (col) VALUES (?);" (Sql.Only n)
-
-    pure $ Response { responseBody = Just $ second ($ n) render }
+    pure $ Response { responseBody = Just $ second ($ action_items) render }
     where
-    text_F n = "Hello " <> (fromMaybe "Internet" name) <> ", this is Haskell!"
-            <> "\n\n" <> "Count: " <> fromString (show n)
-            <> "\n" <> "Accept: " <> accept
+    text_F action_items = LT.encodeUtf8 . LT.pack $ unlines $ show <$> action_items
     accept = LBS.fromStrict . renderHeader $ acceptMedia (negotiation req)
 
 
