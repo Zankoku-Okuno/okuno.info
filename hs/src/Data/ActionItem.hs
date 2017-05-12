@@ -25,16 +25,14 @@ data ActionItem = ActionItem
     } deriving (Show)
 
 
-create :: ActionItem -> Db [Pk ActionItem]
+create :: ActionItem -> Sql [Pk ActionItem]
 create ActionItem{..} = do
-    ids <- query q (text, deadline, action_type, weight, timescale, action_status)
+    ids <- query $(fileStr "ActionItem-create.sql")
+                    (text, deadline, action_type, weight, timescale, action_status)
     pure $ fromOnly <$> ids
-    where q = $(fileStr "ActionItem-create.sql")
 
--- TODO give an order to these
-all :: Db [Stored ActionItem]
-all = (parse <$>) <$> query_ q
+all :: Sql [Stored ActionItem]
+all = (xformRow <$>) <$> query_ $(fileStr "ActionItem-all.sql")
     where
-    q = $(fileStr "ActionItem-all.sql")
-    parse (id, text, action_type, weight, timescale, deadline, action_status) =
+    xformRow (id, text, action_type, weight, timescale, deadline, action_status) =
         Stored id $ ActionItem {..}

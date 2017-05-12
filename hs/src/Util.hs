@@ -21,11 +21,6 @@ throwLeft :: Exception e => Either e a -> IO a
 throwLeft (Left e) = Exn.throw e
 throwLeft (Right v) = pure v
 
-withConn :: (Sql.Connection -> IO a) -> IO a
-withConn transact = Exn.bracket (Sql.connectPostgreSQL "dbname='hstest' port='5432'") Sql.close transact
-
-
-
 
 {-| Create a string literal from the contents of the passed file.
 

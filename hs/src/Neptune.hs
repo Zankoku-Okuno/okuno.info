@@ -51,17 +51,17 @@ instance Exception Error
 
 type NeptuneApp = Request -> IO Response
 
-type Dispatcher = [Location -> Maybe NeptuneApp]
+type Dispatcher = Location -> Maybe NeptuneApp
 type ErrorReporter = Request -> Error -> Response
 
-neptune :: Dispatcher -> ErrorReporter -> NeptuneApp
+neptune :: [Dispatcher] -> ErrorReporter -> NeptuneApp
 neptune handlers onError req@Request{..} = do
     let pipeline = case dispatch handlers resourceId of
             Nothing -> Exn.throw $ BadResource resourceId
             Just handler -> handler req
     Exn.catch pipeline (pure . onError req)
 
-dispatch :: Dispatcher -> Location -> Maybe NeptuneApp
+dispatch :: [Dispatcher] -> Location -> Maybe NeptuneApp
 dispatch rs rid = listToMaybe . catMaybes $ ($ rid) <$> rs
 
 

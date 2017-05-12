@@ -1,7 +1,9 @@
 {-#LANGUAGE GeneralizedNewtypeDeriving #-}
+{-#LANGUAGE RankNTypes #-}
 module Data.Db (
       Pk(..)
     , Stored(..)
+    , Sql
     , Db, transact
     , query, query_
     -- re-exports
@@ -24,19 +26,22 @@ data Pk a = Pk Int64
 data Stored a = Stored (Pk a) a
     deriving (Show)
 
-
-newtype Db a = Db { unDb :: ReaderT Sql.Connection IO a }
+newtype Sql a = Sql { unSql :: ReaderT Sql.Connection IO a }
     deriving (Functor, Applicative, Monad, MonadIO)
-transact :: Db a -> Sql.Connection -> IO a
-transact (Db action) conn = Sql.withTransaction conn $ runReaderT action conn
 
-query :: (ToRow q, FromRow r) => Sql.Query -> q -> Db [r]
-query q args = Db $ do
+type Db = forall a. (Sql.Connection -> IO a) -> IO a
+transact :: Db -> Sql a -> IO a
+transact withConnection (Sql action) =
+    withConnection $ \conn ->
+        Sql.withTransaction conn $ runReaderT action conn
+
+query :: (ToRow q, FromRow r) => Sql.Query -> q -> Sql [r]
+query q args = Sql $ do
     conn <- ask
     liftIO $ Sql.query conn q args
 
-query_ :: FromRow r => Sql.Query -> Db [r]
-query_ q = Db $ do
+query_ :: FromRow r => Sql.Query -> Sql [r]
+query_ q = Sql $ do
     conn <- ask
     liftIO $ Sql.query_ conn q
 
