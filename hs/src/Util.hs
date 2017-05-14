@@ -7,6 +7,7 @@ import Data.String(IsString(..))
 import System.FilePath
 import System.IO
 
+import Control.Monad
 import Control.Exception (Exception)
 import qualified Control.Exception as Exn
 
@@ -21,6 +22,10 @@ throwLeft :: Exception e => Either e a -> IO a
 throwLeft (Left e) = Exn.throw e
 throwLeft (Right v) = pure v
 
+
+unmaybeM_ :: Monad m => Maybe a -> (a -> m b) -> m ()
+unmaybeM_ Nothing f = pure ()
+unmaybeM_ (Just x) f = void $ f x
 
 {-| Create a string literal from the contents of the passed file.
 

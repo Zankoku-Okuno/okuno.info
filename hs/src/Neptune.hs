@@ -27,6 +27,7 @@ query_queryAll q k = fromMaybe [] $ Map.lookup k q
 query_queryOne :: Query -> BS.ByteString -> Maybe BS.ByteString
 query_queryOne q k = listToMaybe $ query_queryAll q k
 
+
 data Request = Request
     { resourceId :: Location
     , method :: Http.Method
