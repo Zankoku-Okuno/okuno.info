@@ -1,4 +1,4 @@
-{-#LANGUAGE RecordWildCards, OverloadedStrings #-}
+{-#LANGUAGE RecordWildCards, OverloadedStrings, LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Data.ActionItem where
 
@@ -25,14 +25,25 @@ data ActionItem = ActionItem
     } deriving (Show)
 
 
-create :: ActionItem -> Sql [Pk ActionItem]
+create :: ActionItem -> Sql (Stored ActionItem)
 create ActionItem{..} = do
     ids <- query $(fileStr "ActionItem-create.sql")
                     (text, deadline, action_type, weight, timescale, action_status)
-    pure $ fromOnly <$> ids
+    case ids of
+        [Only pk] -> byPk pk >>= \case
+            Nothing -> error "sql insert succeeded, but row could not be queried"
+            Just item -> pure item
+        _ -> error "sql insert failed"
 
 all :: Sql [Stored ActionItem]
 all = (xformRow <$>) <$> query_ $(fileStr "ActionItem-all.sql")
     where
     xformRow (id, text, action_type, weight, timescale, deadline, action_status) =
-        Stored id $ ActionItem {..}
+        Stored id ActionItem{..}
+
+byPk :: Pk ActionItem -> Sql (Maybe (Stored ActionItem))
+byPk pk = xform <$> query $(fileStr "ActionItem-byPk.sql") (Only pk)
+    where
+    xform [] = Nothing
+    xform [(id, text, action_type, weight, timescale, deadline, action_status)] =
+        Just $ Stored id ActionItem{..}

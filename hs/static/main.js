@@ -1,19 +1,33 @@
 document.addEventListener("DOMContentLoaded", function () {
-    var dom = document.querySelector("form#create-action-item")
-    dom.addEventListener("submit", function (e) {
+    var form = document.querySelector("form#create-action-item")
+    form.addEventListener("submit", function (e) {
         e.preventDefault()
 
         var params = {}
-        dom.querySelectorAll("*[name]").forEach(function (data) {
+        form.querySelectorAll("*[name]").forEach(function (data) {
             if (data.value === "") { return }
             params[data.name] = data.value
         })
 
         Http.put({
-            url: "/delme",
+            url: "/action-item",
             query: params,
-            responseType: 'text'
-        }).then(console.log)
+            headers: {
+                'Accept': "text/html+frag"
+            },
+            responseType: 'text',
+        })
+        .then(function (response) {
+            var fragment = (function () {
+                var tmp = document.createElement('template')
+                tmp.innerHTML = response.body
+                return tmp.content
+            })()
+
+            document.querySelector("#action_items").prepend(fragment)
+            form.reset()
+        })
+        .catch(console.log) // TODO
     })
     
 })

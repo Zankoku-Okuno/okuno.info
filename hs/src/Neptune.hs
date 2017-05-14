@@ -45,7 +45,8 @@ data Response = Response
     , responseBody :: Maybe Content
     }
 data Error
-    = BadResource Location
+    = BadResource
+    | BadVerb [Http.Method]
     | BadMedia [MediaType]
     deriving(Show)
 instance Exception Error
@@ -58,7 +59,7 @@ type ErrorReporter = Request -> Error -> Response
 neptune :: [Dispatcher] -> ErrorReporter -> NeptuneApp
 neptune handlers onError req@Request{..} = do
     let pipeline = case dispatch handlers resourceId of
-            Nothing -> Exn.throw $ BadResource resourceId
+            Nothing -> Exn.throw BadResource
             Just handler -> handler req
     Exn.catch pipeline (pure . onError req)
 
@@ -81,7 +82,9 @@ negotiateMedia provide accept = case negotiate provide accept of
 
 
 haikuErrorResponse :: Request -> Error -> Response
-haikuErrorResponse req (BadResource loc) =
+haikuErrorResponse req BadResource =
     Response { status = Http.status404, responseBody = Just ("text/plain", "Error 404:\nYour file could not be found,\nTry again later.") }
-haikuErrorResponse req (BadMedia _) = --FIXME include the acceptable media types
+haikuErrorResponse req (BadVerb allowed) =
+    Response { status = Http.status405, responseBody = Just ("text/plain", "Error 405:\nThat method is not allowed,\nTry a different one.")}
+haikuErrorResponse req (BadMedia acceptable) = --FIXME include the acceptable media types
     Response { status = Http.status406, responseBody = Just ("text/plain", "Error 406:\nUnknown format requested,\nNot acceptable.") }
