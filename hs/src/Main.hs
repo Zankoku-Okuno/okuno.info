@@ -1,5 +1,4 @@
-{-#LANGUAGE OverloadedStrings, RecordWildCards, ViewPatterns, TupleSections, ScopedTypeVariables,
-            DeriveAnyClass #-}
+{-#LANGUAGE OverloadedStrings, RecordWildCards, ViewPatterns, TupleSections, ScopedTypeVariables, LambdaCase #-}
 {-#LANGUAGE RankNTypes #-}
 {-#LANGUAGE TemplateHaskell #-}
 module Main where
@@ -23,12 +22,15 @@ import Network.HTTP.Media
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.Warp as Warp
 
+import System.Environment
 import System.FilePath
+import System.IO
 
 import qualified Database.PostgreSQL.Simple as Sql
 import Data.Db
 import Data.Pool
 
+import Data.Default
 import Data.Maybe
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -42,6 +44,7 @@ import qualified Control.Exception as Exn
 import Util
 import Neptune
 import Neptune.Wai
+import qualified Network.Wai.Middleware.RequestLogger as Wai
 
 import Resources
 
@@ -50,22 +53,40 @@ import Resources
 
 main :: IO ()
 main = do
-    config <- loadConfig
-    pool <- createPool (Sql.connectPostgreSQL $ connect config) Sql.close 1 10 10 -- TODO configurable timeout/max connections (and whether to pool at all)
+    Config{..} <- loadConfig
+    pool <- createPool (Sql.connectPostgreSQL dbconnect) Sql.close 1 10 10 -- TODO configurable timeout/max connections (and whether to pool at all)
     let db = withResource pool
-    let port = 8080
+        app = toWaiApp $ neptune [action_handlers db] haikuErrorResponse
+    putStrLn $ "Logging to " ++ show (fst log)
     putStrLn $ "Running server on port " ++ show port ++ " (Ctrl-C to exit)..."
-    Warp.run port (toWaiApp $ neptune [action_handlers db] haikuErrorResponse)
+    Warp.run port $ (snd log) app
 
 
 data Config = Config
-    { connect :: BS.ByteString
+    { port :: Int
+    , dbconnect :: BS.ByteString
+    , log :: (String, Wai.Middleware)
     }
 loadConfig :: IO Config
 loadConfig = do
-    -- FIXME set location of configs in a command line option
-    connect <- BS.readFile "dbconnect.conf"
+    -- FIXME real command line option parsing
+    config_dir <- getArgs >>= \case
+        [] -> pure "."
+        [filepath] -> pure filepath
+        _ -> error "usage: okuno-info [config-dir]"
+    port <- read <$> readFile (config_dir </> "port.conf")
+    dbconnect <- BS.readFile (config_dir </> "dbconnect.conf")
+    log <- parseLog =<< readFile (config_dir </> "logging.conf")
     pure $ Config {..}
+    where
+    parseLog "" = pure $ ("<stdout>", Wai.logStdoutDev)
+    parseLog filepath = do
+        error filepath
+        handle <- openFile filepath AppendMode
+        logger <- Wai.mkRequestLogger def{ Wai.outputFormat = Wai.Detailed False
+                                         , Wai.destination = Wai.Handle handle
+                                         }
+        pure (filepath, logger)
 
 
 action_handlers :: Db -> Dispatcher
