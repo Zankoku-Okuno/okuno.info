@@ -5,6 +5,8 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy.Encoding as LT
 
 import qualified Network.HTTP.Types as Http
 import Network.HTTP.Media
@@ -61,7 +63,8 @@ neptune handlers onError req@Request{..} = do
     let pipeline = case dispatch handlers resourceId of
             Nothing -> Exn.throw BadResource
             Just handler -> handler req
-    Exn.catch pipeline (pure . onError req)
+    let main = pipeline `Exn.catch` (pure . onError req)
+    main `Exn.catch` (pure . fallbackErrorResponse)
 
 dispatch :: [Dispatcher] -> Location -> Maybe NeptuneApp
 dispatch rs rid = listToMaybe . catMaybes $ ($ rid) <$> rs
@@ -85,6 +88,12 @@ haikuErrorResponse :: Request -> Error -> Response
 haikuErrorResponse req BadResource =
     Response { status = Http.status404, responseBody = Just ("text/plain", "Error 404:\nYour file could not be found,\nTry again later.") }
 haikuErrorResponse req (BadVerb allowed) =
-    Response { status = Http.status405, responseBody = Just ("text/plain", "Error 405:\nThat method is not allowed,\nTry a different one.")}
+    Response { status = Http.status405, responseBody = Just ("text/plain", "Error 405:\nWhat are you trying to do?\nMethod not allowed.")}
 haikuErrorResponse req (BadMedia acceptable) = --FIXME include the acceptable media types
     Response { status = Http.status406, responseBody = Just ("text/plain", "Error 406:\nUnknown format requested,\nNot acceptable.") }
+
+fallbackErrorResponse :: Exn.SomeException -> Response
+fallbackErrorResponse e = Response
+    { status = Http.status500
+    , responseBody = Just ("text/plain", LT.encodeUtf8 . LT.pack $ show e)
+    }

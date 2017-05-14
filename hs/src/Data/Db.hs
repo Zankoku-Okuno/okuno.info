@@ -12,9 +12,11 @@ module Data.Db (
 ) where
 
 import Data.Int (Int64)
--- monads
+import qualified Data.Text as T
+
+import Control.Arrow
 import Control.Monad.Reader
--- database
+
 import Database.PostgreSQL.Simple (ToRow, FromRow)
 import qualified Database.PostgreSQL.Simple as Sql
 import Database.PostgreSQL.Simple.FromField
@@ -22,7 +24,11 @@ import Database.PostgreSQL.Simple.ToField
 
 
 data Pk a = Pk Int64
-    deriving (Show)
+instance Show (Pk a) where
+    show (Pk a) = show a
+instance Read (Pk a) where
+    readsPrec n str = first Pk <$> readsPrec n str
+
 data Stored a = Stored (Pk a) a
     deriving (Show)
 

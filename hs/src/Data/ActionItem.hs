@@ -1,9 +1,8 @@
-{-#LANGUAGE RecordWildCards, OverloadedStrings, LambdaCase #-}
+{-#LANGUAGE RecordWildCards, OverloadedStrings, LambdaCase, ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Data.ActionItem where
 
 -- bytes/text
-import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.String (IsString(..))
@@ -26,13 +25,20 @@ data ActionItem = ActionItem
 
 
 create :: ActionItem -> Sql (Stored ActionItem)
-create ActionItem{..} = do
+create item@(ActionItem{..}) = do
     ids <- query $(fileStr "ActionItem-create.sql")
                     (text, deadline, action_type, weight, timescale, action_status)
     case ids of
-        [Only pk] -> byPk pk >>= \case
-            Nothing -> error "sql insert succeeded, but row could not be queried"
-            Just item -> pure item
+        [Only pk] -> pure $ Stored pk item
+        _ -> error "sql insert failed"
+
+update :: Stored ActionItem -> Sql (Maybe (Stored ActionItem))
+update item@(Stored pk ActionItem{..}) = do
+    ids <- query $(fileStr "ActionItem-update.sql")
+                    (text, action_type, weight, timescale, action_status, deadline, pk)
+    pure $ case ids of
+        [] -> Nothing
+        [Only (pk :: Pk ActionItem)] -> Just item
         _ -> error "sql insert failed"
 
 all :: Sql [Stored ActionItem]

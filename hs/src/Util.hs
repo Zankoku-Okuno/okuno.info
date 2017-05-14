@@ -1,10 +1,26 @@
-module Util where
+module Util (
+      module Data.Default
+    , module Data.Maybe
+    , module Control.Applicative
+    , runMaybe
+    , throwLeft
+    , throwMaybe
+    , maybeM_
+    , showTime, readTime
+    , fileStr
+    ) where
 
 import Language.Haskell.TH
+
+import Data.Time.Calendar (Day)
+import Data.Time.Format hiding (readTime)
 
 import System.FilePath
 import System.IO
 
+import Data.Default
+import Data.Maybe
+import Control.Applicative
 import Control.Monad
 import Control.Exception (Exception)
 import qualified Control.Exception as Exn
@@ -16,18 +32,24 @@ runMaybe :: Maybe a -> b -> (a -> b) -> b
 runMaybe Nothing x _ = x
 runMaybe (Just v) _ f = f v
 
-throwLeft :: Exception e => Either e a -> IO a
+throwLeft :: Monad m => Exception e => Either e a -> m a
 throwLeft (Left e) = Exn.throw e
 throwLeft (Right v) = pure v
 
-throwMaybe :: Exception e => e -> Maybe a -> IO a
+throwMaybe :: Monad m => Exception e => e -> Maybe a -> m a
 throwMaybe e Nothing = Exn.throw e
 throwMaybe e (Just x) = pure x
 
 
-unmaybeM_ :: Monad m => Maybe a -> (a -> m b) -> m ()
-unmaybeM_ Nothing f = pure ()
-unmaybeM_ (Just x) f = void $ f x
+maybeM_ :: Monad m => Maybe a -> (a -> m b) -> m ()
+maybeM_ Nothing f = pure ()
+maybeM_ (Just x) f = void $ f x
+
+showTime :: FormatTime t => t -> String
+showTime = formatTime defaultTimeLocale (iso8601DateFormat Nothing)
+
+readTime :: (Monad m, ParseTime t) => String -> m t
+readTime = parseTimeM True defaultTimeLocale (iso8601DateFormat Nothing)
 
 
 {-| Create a string literal from the contents of the passed file.
