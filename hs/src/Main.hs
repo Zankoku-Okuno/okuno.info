@@ -81,7 +81,6 @@ loadConfig = do
     where
     parseLog "" = pure $ ("<stdout>", Wai.logStdoutDev)
     parseLog filepath = do
-        error filepath
         handle <- openFile filepath AppendMode
         logger <- Wai.mkRequestLogger def{ Wai.outputFormat = Wai.Detailed False
                                          , Wai.destination = Wai.Handle handle

@@ -1,0 +1,9 @@
+[Unit]
+Description = okuno-info web server (Haskell-based)
+After = network.target
+[Service]
+ExecStart = /var/lib/okuno-info/okuno-info.sh
+User = okuno
+Group = okuno
+[Install]
+WantedBy = multi-user.target
