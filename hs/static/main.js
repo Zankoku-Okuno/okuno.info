@@ -13,15 +13,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 url: "/action-item", // FIXME grab action from form
                 query: params,
                 headers: {
-                    'Accept': "text/html+frag"
+                    'Accept': "application/htmlfrag+json"
                 },
-                responseType: 'text',
             })
             .then(function (response) {
+                console.log(response)
                 // FIXME fire an event from the form
                 var fragment = (function () {
                     var tmp = document.createElement('template')
-                    tmp.innerHTML = response.body
+                    tmp.innerHTML = response.body.action_item
                     return tmp.content
                 })()
 

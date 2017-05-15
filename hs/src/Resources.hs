@@ -11,6 +11,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 
 import Lucid
+import Data.Aeson
 
 import qualified Network.HTTP.Types as Http
 
@@ -49,7 +50,7 @@ index_R db req = do
 
 action_item_R :: Db -> Maybe (Pk ActionItem) -> NeptuneApp
 action_item_R db pk req = do
-    render <- throwLeft $ negotiateMedia [("text/html", html_F), ("text/html+frag", htmlfrag_F)] (acceptMedia $ negotiation req)
+    render <- throwLeft $ negotiateMedia [("text/html", html_F), ("application/htmlfrag+json", htmlfrag_F)] (acceptMedia $ negotiation req)
     item <- case method req of
         "GET" -> do
             pk <- throwMaybe BadResource pk
@@ -65,12 +66,15 @@ action_item_R db pk req = do
                     result <- ActionItem.update (Stored pk item)
                     throwMaybe BadResource result
         _ -> Exn.throw $ BadVerb ["GET", "PUT"]
-    pure $ Response { status = Http.status200, responseBody = Just $ second ($ item) render }
+    pure $ Response { status = Http.status200, responseBody = Just $ second ($ item) render } -- FIXME status201 where appropriate
     where
     html_F item = renderBS $ doctypehtml_ $ do
         defaultHead
         body_ $ ActionItem.full item
-    htmlfrag_F = renderBS . li_ . ActionItem.form . first Just . toForm
+    htmlfrag_F item = 
+        let html = renderText . li_ . ActionItem.form . first Just . toForm $ (item :: Stored ActionItem)
+            json = object ["action_item" .= html]
+        in encode json
     getForm q = ActionItem.Form
         { text = T.decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
         , action_type = T.decodeUtf8 <$> query_queryOne q "action_type"

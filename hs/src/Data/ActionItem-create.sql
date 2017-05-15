@@ -5,10 +5,7 @@ INSERT INTO action_item (
     weight_id,
     timescale_id,
     deadline,
-    action_status_id,
-    created_on,
-    last_accessed_on,
-    last_update_on
+    action_status_id
 ) (
     SELECT
         ?,
@@ -16,10 +13,7 @@ INSERT INTO action_item (
         rt.weight.id,
         rt.timescale.id,
         ?,
-        rt.action_status.id,
-        current_date,
-        current_date,
-        current_date
+        rt.action_status.id
     FROM rt.action_type, rt.weight, rt.timescale, rt.action_status
     WHERE
         rt.action_type.description = ? AND

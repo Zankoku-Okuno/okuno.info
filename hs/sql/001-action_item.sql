@@ -1,5 +1,6 @@
 BEGIN;
 
+
 CREATE SCHEMA rt
     CREATE TABLE rt.timescale (
         id SERIAL PRIMARY KEY,
@@ -63,6 +64,7 @@ INSERT INTO rt.action_status (description, ordering) VALUES
     ('active', 3),
     ('complete', 4),
     ('dismissed', 5);
+
 
 UPDATE version SET version = 1;
 COMMIT;
