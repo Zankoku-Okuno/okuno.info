@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
+
+    // set up put request forms
+    // FIXME make this a live extension
     document.querySelectorAll("form[method='PUT'][action='/action-item']").forEach(function (form) {
         form.addEventListener("submit", function (e) {
             e.preventDefault()
@@ -30,5 +33,19 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .catch(console.log) // TODO
         })
+    })
+
+    // set up tabs
+    // FIXME make this a live extension
+    document.querySelectorAll("select[data-tabset]").forEach(function (controller) {
+        function update_tabs() {
+            var tabset = controller.dataset.tabset
+            var new_tab = controller.value
+            document.querySelectorAll("*[data-tab][data-tabset='"+tabset+"']").forEach(function (tab) {
+                tab.classList[tab.dataset.tab === new_tab ? 'remove' : 'add']("hidden")
+            })
+        }
+        update_tabs()
+        controller.addEventListener("change", update_tabs)
     })
 })

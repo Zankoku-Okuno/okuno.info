@@ -95,7 +95,12 @@ action_handlers db (["action-item"], q) = do
     Just $ action_item_R db pk
 action_handlers db (["static", filename], q) = Just $ \req -> do
     contents <- LBS.readFile $ "static" </> T.unpack filename
-    pure $ Response { status = Http.status200, responseBody = Just ("application/javascript", contents) }
+    pure $ Response { status = Http.status200, responseBody = Just (mime filename, contents) }
+    where
+    mime filename
+        | ".js" `T.isSuffixOf` filename  = "application/javascript"
+        | ".css" `T.isSuffixOf` filename  = "text/css"
+        | otherwise = "application/octet-stream"
 action_handlers db _ = Nothing
 
 

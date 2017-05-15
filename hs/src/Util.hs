@@ -2,6 +2,7 @@ module Util (
       module Data.Default
     , module Data.Maybe
     , module Control.Applicative
+    , module Control.Arrow
     , runMaybe
     , throwLeft
     , throwMaybe
@@ -21,6 +22,7 @@ import System.IO
 import Data.Default
 import Data.Maybe
 import Control.Applicative
+import Control.Arrow
 import Control.Monad
 import Control.Exception (Exception)
 import qualified Control.Exception as Exn

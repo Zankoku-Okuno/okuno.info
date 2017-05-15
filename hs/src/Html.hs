@@ -14,6 +14,11 @@ import Lucid
 import Lucid.Base (TermRaw(..))
 
 
+css_ :: Monad m => Text -> HtmlT m ()
+css_ href = link_ [rel_ "stylesheet", type_ "text/css", href_ href]
+js_ :: Monad m => Text -> HtmlT m ()
+js_ href = termRawWith "script" [ type_ "text/javascript", src_ href] ""
+
 dropdown_ :: Monad m => Either Text Text -> [Text] -> HtmlT m ()
 dropdown_ sel opts =
     select_ $ do
@@ -38,14 +43,15 @@ defaultHead = head_ $ do
     meta_ [charset_ "utf-8"]
     title_ "残酷 奧泉 ꙮ‽"
 
-    termRawWith "script" [ type_ "text/javascript", src_ "static/better-dom.js"] ""
-    termRawWith "script" [ type_ "text/javascript", src_ "static/better-i18n-plugin.js"] ""
-    termRawWith "script" [ type_ "text/javascript", src_ "static/better-time-element.js"] ""
-    termRawWith "script" [ type_ "text/javascript", src_ "static/better-dateinput-polyfill.js"] ""
+    js_ "static/better-dom.js"
+    js_ "static/better-i18n-plugin.js"
+    js_ "static/better-time-element.js"
+    js_ "static/better-dateinput-polyfill.js"
 
-    termRawWith "script" [src_ "http://rsvpjs-builds.s3.amazonaws.com/rsvp-latest.js"] ""
-    termRawWith "script" [src_ "static/lodash.core.js"] ""
-    termRawWith "script" [src_ "static/URI.js"] ""
-    termRawWith "script" [src_ "static/http.js"] ""
+    js_ "http://rsvpjs-builds.s3.amazonaws.com/rsvp-latest.js"
+    js_ "static/lodash.core.js"
+    js_ "static/URI.js"
+    js_ "static/http.js"
     
-    termRawWith "script" [src_ "static/main.js"] ""
+    js_ "static/main.js"
+    css_ "static/main.css"

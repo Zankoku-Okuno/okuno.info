@@ -46,7 +46,7 @@ index_R db req = do
             ActionItem.form def
             ol_ ! [id_ "action_items"] $
                 forM_ action_items $ \item -> do
-                    li_ $ (ActionItem.form . first Just . toForm) (item :: Stored ActionItem)
+                    li_ $ ActionItem.full item
 
 action_item_R :: Db -> Maybe (Pk ActionItem) -> NeptuneApp
 action_item_R db pk req = do

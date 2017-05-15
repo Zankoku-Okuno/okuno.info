@@ -8,6 +8,7 @@ import Control.Monad
 
 import Util
 import Data.Db
+import Form
 import Html
 
 import Data.ActionItem (ActionItem(..))
@@ -16,8 +17,14 @@ import qualified Form.ActionItem as ActionItem
 
 
 full :: Monad m => Stored ActionItem -> HtmlT m () 
-full (Stored pk ActionItem{..}) = do
-    div_ $ do
+full item@(Stored pk ActionItem{..}) = do
+    let tabset = T.concat ["action_item-", T.pack $ show pk]
+    select_ [data_ "tabset" tabset] $ do
+        option_ ! [value_ "view", selected_ "true"] $ "View"
+        option_ ! [value_ "edit"] $ "Edit"
+    div_ ! [ data_ "tabset" tabset
+           , data_ "tab" "view"
+           ] $ do
         p_ $ do
             toHtml text
         div_ $ do
@@ -32,6 +39,10 @@ full (Stored pk ActionItem{..}) = do
             small_ $ toHtml action_status
             " "
             small_ $ toHtml action_type
+    div_ ! [ data_ "tabset" tabset
+           , data_ "tab" "edit"
+           ] $ form $
+        (first Just) (toForm item)
 
 form :: Monad m => (Maybe (Pk ActionItem), ActionItem.Form) -> HtmlT m ()
 form (pk, ActionItem.Form{..}) = form_ ! [method_ "PUT", action_ "/action-item", spellcheck_ "true"] $ do
