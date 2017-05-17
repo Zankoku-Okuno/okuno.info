@@ -100,6 +100,7 @@ action_handlers db (["static", filename], q) = Just $ \req -> do
     mime filename
         | ".js" `T.isSuffixOf` filename  = "application/javascript"
         | ".css" `T.isSuffixOf` filename  = "text/css"
+        | ".html" `T.isSuffixOf` filename  = "text/html"
         | otherwise = "application/octet-stream"
 action_handlers db _ = Nothing
 

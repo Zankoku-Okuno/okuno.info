@@ -14,6 +14,8 @@ module Data.Db (
 import Data.Int (Int64)
 import qualified Data.Text as T
 
+import Data.Aeson
+
 import Control.Arrow
 import Control.Monad.Reader
 
@@ -23,13 +25,15 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 
 
-data Pk a = Pk Int64
+newtype Pk a = Pk Int64
 instance Show (Pk a) where
     show (Pk a) = show a
 instance Read (Pk a) where
     readsPrec n str = first Pk <$> readsPrec n str
+instance ToJSON (Pk a) where
+    toJSON (Pk x) = toJSON x
 
-data Stored a = Stored (Pk a) a
+data Stored a = Stored { thePk :: Pk a, thePayload :: a }
     deriving (Show)
 
 newtype Sql a = Sql { unSql :: ReaderT Sql.Connection IO a }

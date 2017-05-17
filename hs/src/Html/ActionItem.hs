@@ -16,10 +16,10 @@ import qualified Data.ActionItem as ActionItem
 import qualified Form.ActionItem as ActionItem
 
 
-full :: Monad m => Stored ActionItem -> HtmlT m () 
+full :: Monad m => Stored ActionItem -> HtmlT m ()
 full item@(Stored pk ActionItem{..}) = do
     let tabset = T.concat ["action_item-", T.pack $ show pk]
-    select_ [data_ "tabset" tabset] $ do
+    select_ [data_ "tabs" tabset] $ do
         option_ ! [value_ "view", selected_ "true"] $ "View"
         option_ ! [value_ "edit"] $ "Edit"
     div_ ! [ data_ "tabset" tabset
@@ -45,11 +45,11 @@ full item@(Stored pk ActionItem{..}) = do
         (first Just) (toForm item)
 
 form :: Monad m => (Maybe (Pk ActionItem), ActionItem.Form) -> HtmlT m ()
-form (pk, ActionItem.Form{..}) = form_ ! [method_ "PUT", action_ "/action-item", spellcheck_ "true"] $ do
+form (pk, ActionItem.Form{..}) = form_ ! [ method_ "PUT", action_ "/action-item", spellcheck_ "true"] $ do
     maybeM_ pk $ \pk ->
         input_ [type_ "hidden", name_ "id", value_ $ (T.pack . show) pk]
     
-    div_ $ textarea_ ! [name_ "text", required_ "true", autofocus_, autocomplete_ "off", placeholder_ "describe action item"] $
+    div_ $ textarea_ ! [name_ "text", required_ "true", autofocus_, placeholder_ "describe action item"] $
         maybeM_ text toHtml
 
     div_ $ do

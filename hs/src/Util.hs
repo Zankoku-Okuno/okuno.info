@@ -1,6 +1,7 @@
 module Util (
       module Data.Default
     , module Data.Maybe
+    , module Data.Monoid
     , module Control.Applicative
     , module Control.Arrow
     , runMaybe
@@ -21,6 +22,7 @@ import System.IO
 
 import Data.Default
 import Data.Maybe
+import Data.Monoid
 import Control.Applicative
 import Control.Arrow
 import Control.Monad

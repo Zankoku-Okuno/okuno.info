@@ -46,7 +46,7 @@ index_R db req = do
             ActionItem.form def
             ol_ ! [id_ "action_items"] $
                 forM_ action_items $ \item -> do
-                    li_ $ ActionItem.full item
+                    li_ ! [data_ "action_item" (T.pack . show $ thePk item)] $ ActionItem.full item
 
 action_item_R :: Db -> Maybe (Pk ActionItem) -> NeptuneApp
 action_item_R db pk req = do
@@ -72,8 +72,8 @@ action_item_R db pk req = do
         defaultHead
         body_ $ ActionItem.full item
     htmlfrag_F item = 
-        let html = renderText . li_ . ActionItem.form . first Just . toForm $ (item :: Stored ActionItem)
-            json = object ["action_item" .= html]
+        let html = renderText $ ActionItem.full item
+            json = object ["id" .= thePk item, "action_item" .= html]
         in encode json
     getForm q = ActionItem.Form
         { text = T.decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
