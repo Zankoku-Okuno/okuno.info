@@ -11,6 +11,7 @@ import Data.Db
 import Form
 import Html
 
+import qualified Data.RefTables as RT
 import Data.ActionItem (ActionItem(..))
 import qualified Data.ActionItem as ActionItem
 import qualified Form.ActionItem as ActionItem
@@ -41,8 +42,8 @@ full item@(Stored pk ActionItem{..}) = do
             small_ $ toHtml action_type
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
-           ] $ form $
-        (first Just) (toForm item)
+           ] $ do
+        form (first Just $ toForm item)
 
 form :: Monad m => (Maybe (Pk ActionItem), ActionItem.Form) -> HtmlT m ()
 form (pk, ActionItem.Form{..}) = form_ ! [ method_ "PUT", action_ "/action-item", spellcheck_ "true"] $ do
@@ -53,17 +54,17 @@ form (pk, ActionItem.Form{..}) = form_ ! [ method_ "PUT", action_ "/action-item"
         maybeM_ text toHtml
 
     div_ $ do
-        dropdown_ (maybe (Left "select type") Right action_type) action_type_opts ! [name_ "action_type", required_ "true"]
-        dropdown_ (maybe (Left "select timescale") Right timescale) timescale_opts ! [name_ "timescale", required_ "true"]
-        dropdown_ (maybe (Left "select weight") Right weight) weight_opts ! [name_ "weight", required_ "true"]
-        dropdown_ (maybe (Right "queued") Right action_status) action_status_opts ! [name_ "action_status", required_ "true"]
+        dropdown_ (maybe (Left "select type") Right action_type) RT.action_type ! [name_ "action_type", required_ "true"]
+        dropdown_ (maybe (Left "select timescale") Right timescale) RT.timescale ! [name_ "timescale", required_ "true"]
+        dropdown_ (maybe (Left "select weight") Right weight) RT.weight ! [name_ "weight", required_ "true"]
+        dropdown_ (maybe (Right "queued") Right action_status) RT.action_status ! [name_ "action_status", required_ "true"]
     div_ $ input_ [type_ "date", name_ "deadline", placeholder_ "due date"]
             ! maybe [] ((:[]) . value_ . T.pack . showTime) deadline
     div_ $ do
         button_ ! [type_ "submit"] $ maybe "Create" (const "Save") pk
         button_ ! [type_ "reset"] $ "Cancel"
     where
-    action_type_opts = ["negentropy", "intel", "decision", "artifact", "learning"]
-    timescale_opts = ["hours", "days", "weeks", "months", "years"]
-    weight_opts = ["trivial", "minor", "medium", "major"]
-    action_status_opts = ["proposed", "queued", "active", "complete", "dismissed"]
+    -- action_type_opts = ["negentropy", "intel", "decision", "artifact", "learning"]
+    -- timescale_opts = ["hours", "days", "weeks", "months", "years"]
+    -- weight_opts = ["trivial", "minor", "medium", "major"]
+    -- action_status_opts = ["proposed", "queued", "active", "complete", "dismissed"]

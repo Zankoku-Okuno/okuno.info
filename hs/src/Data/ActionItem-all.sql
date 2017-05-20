@@ -12,13 +12,14 @@ FROM action_item
     JOIN rt.timescale ON (timescale_id = timescale.id)
     JOIN rt.action_status ON (action_status_id = action_status.id)
 WHERE
-    rt.action_status.description IN ('proposed', 'queued', 'active')
+    rt.action_status.description IN ('proposed', 'queued', 'waiting', 'active')
 ORDER BY
     CASE
         WHEN (deadline - time) :: date <= current_date THEN TRUE
         ELSE FALSE
     END DESC,
     rt.action_status.description = 'active' DESC,
+    rt.action_status.description = 'waiting' DESC,
     rt.action_status.description = 'queued' DESC,
     EXTRACT(EPOCH FROM time) / (24*3600) / weight ::float ASC,
     last_accessed_on DESC;

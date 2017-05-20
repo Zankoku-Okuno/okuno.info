@@ -1,3 +1,10 @@
 .hidden {
     display: none;
 }
+
+*[data-action_item] {
+    max-width: 30em;
+}
+*[data-action_item] > select[data-tabs] {
+    float: right;
+}

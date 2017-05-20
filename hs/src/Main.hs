@@ -47,6 +47,7 @@ import Neptune.Wai
 import qualified Network.Wai.Middleware.RequestLogger as Wai
 
 import Resources
+import Data.RefTables (initialize)
 
 
 
@@ -58,6 +59,7 @@ main = do
     let db = withResource pool
         app = toWaiApp $ neptune [action_handlers db] haikuErrorResponse
     putStrLn $ "Logging to " ++ show (fst log)
+    initialize db
     putStrLn $ "Running server on port " ++ show port ++ " (Ctrl-C to exit)..."
     Warp.run port $ (snd log) app
 

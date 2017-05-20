@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("*[data-action_item] > select[data-tabs]").forEach(function (controller) {
+        controller.value = 'view'
+    })
     patch_dom(document)
 })
 

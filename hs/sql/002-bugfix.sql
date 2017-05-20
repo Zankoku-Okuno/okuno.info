@@ -12,5 +12,5 @@ ALTER TABLE rt.action_type   ADD CONSTRAINT rt_action_type_description_unique   
 ALTER TABLE rt.action_status ADD CONSTRAINT rt_action_status_description_unique UNIQUE (description);
 
 
-UPDATE version SET version = 1;
+UPDATE version SET version = 2;
 COMMIT;
