@@ -1,20 +1,22 @@
 module Util (
       module Data.Default
     , module Data.Maybe
+    , runMaybe
+    , throwMaybe
+    , throwLeft
+    , maybeM_
     , module Data.Monoid
     , module Control.Applicative
     , module Control.Arrow
-    , runMaybe
-    , throwLeft
-    , throwMaybe
-    , maybeM_
+    , module Control.Monad
+    , getCurrentTime, UTCTime(..), Day
     , showTime, readTime
     , fileStr
     ) where
 
 import Language.Haskell.TH
 
-import Data.Time.Calendar (Day)
+import Data.Time (getCurrentTime, UTCTime(..), Day)
 import Data.Time.Format hiding (readTime)
 
 import System.FilePath

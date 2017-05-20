@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll("*[data-action_item] > select[data-tabs]").forEach(function (controller) {
+    document.querySelectorAll("*[data-action_item] select[data-tabs]").forEach(function (controller) {
         controller.value = 'view'
     })
     patch_dom(document)
@@ -79,5 +79,16 @@ function init_action_item_forms(dom) {
 function patch_dom(dom) {
     init_tabs(dom)
     init_action_item_forms(dom)
+
+    document.querySelectorAll("*[data-action_item]").forEach(function (item) {
+        var tabset = "action_item-"+item.dataset["action_item"]
+        var controller = item.querySelector("select[data-tabs='"+tabset+"'")
+        var form = item.querySelector("form[method='PUT'][action='/action-item']")
+        if (controller !== null && form !== null) {
+            controller.addEventListener('change', function () {
+                form.reset()
+            })
+        }
+    })
 }
 

@@ -8,3 +8,24 @@
 *[data-action_item] > select[data-tabs] {
     float: right;
 }
+
+
+.action_item_meta {
+    border-radius: 0.4em;
+}
+
+.action_item_meta[data-time_status='overdue'] {
+    border: thin red solid;
+}
+.action_item_meta[data-time_status='today'] {
+    border: thin grey solid;
+}
+
+.action_item_meta[data-action_status='active'] {
+    border: thin green solid;
+}
+.action_item_meta[data-action_status='waiting'] {
+    color: grey;
+}
+.action_item_meta[data-action_status='queued'] {
+}

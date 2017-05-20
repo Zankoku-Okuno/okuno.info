@@ -1,10 +1,10 @@
-{-#LANGUAGE OverloadedStrings, RecordWildCards, ViewPatterns #-}
+{-#LANGUAGE OverloadedStrings, RecordWildCards, ViewPatterns, MultiWayIf #-}
 module Html.ActionItem where
 
 import Data.Text (Text)
 import qualified Data.Text as T
 
-import Control.Monad
+import Data.Time (Day)
 
 import Util
 import Data.Db
@@ -17,8 +17,8 @@ import qualified Data.ActionItem as ActionItem
 import qualified Form.ActionItem as ActionItem
 
 
-full :: Monad m => Stored ActionItem -> HtmlT m ()
-full item@(Stored pk ActionItem{..}) = do
+full :: Monad m => Day -> Stored ActionItem -> HtmlT m ()
+full today item@(Stored pk ActionItem{..}) = do
     let tabset = T.concat ["action_item-", T.pack $ show pk]
     select_ [data_ "tabs" tabset] $ do
         option_ ! [value_ "view", selected_ "true"] $ "View"
@@ -30,20 +30,24 @@ full item@(Stored pk ActionItem{..}) = do
             toHtml text
         div_ $ do
             maybeM_ deadline $ \deadline -> do
-                let date = showTime deadline
-                small_ $ toHtml date
+                let time_status = if | deadline < today -> "overdue"
+                                     | deadline == today -> "today"
+                                     -- TODO if the deadline is within the time interval
+                                     | otherwise -> "normal"
+                    date = showTime deadline
+                small_ ! [class_ "action_item_meta ", data_ "time_status" time_status]$ toHtml date
                 " "
-            small_ $ toHtml timescale
+            small_ ! [class_ "action_item_meta ", data_ "timescale" timescale] $ toHtml timescale
             " "
-            small_ $ toHtml weight
+            small_ ! [class_ "action_item_meta ", data_ "weight" weight] $ toHtml weight
             " "
-            small_ $ toHtml action_status
+            small_ ! [class_ "action_item_meta ", data_ "action_status" action_status] $ toHtml action_status
             " "
-            small_ $ toHtml action_type
+            small_ ! [class_ "action_item_meta ", data_ "action_type" action_type] $ toHtml action_type
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
            ] $ do
-        form (first Just $ toForm item)
+        form (first Just $ toForm item) ! [autocomplete_ "off"]
 
 form :: Monad m => (Maybe (Pk ActionItem), ActionItem.Form) -> HtmlT m ()
 form (pk, ActionItem.Form{..}) = form_ ! [ method_ "PUT", action_ "/action-item", spellcheck_ "true"] $ do
@@ -63,8 +67,3 @@ form (pk, ActionItem.Form{..}) = form_ ! [ method_ "PUT", action_ "/action-item"
     div_ $ do
         button_ ! [type_ "submit"] $ maybe "Create" (const "Save") pk
         button_ ! [type_ "reset"] $ "Cancel"
-    where
-    -- action_type_opts = ["negentropy", "intel", "decision", "artifact", "learning"]
-    -- timescale_opts = ["hours", "days", "weeks", "months", "years"]
-    -- weight_opts = ["trivial", "minor", "medium", "major"]
-    -- action_status_opts = ["proposed", "queued", "active", "complete", "dismissed"]
