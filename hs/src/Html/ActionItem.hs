@@ -44,6 +44,9 @@ full today item@(Stored pk ActionItem{..}) = do
             small_ ! [class_ "action_item_meta ", data_ "action_status" action_status] $ toHtml action_status
             " "
             small_ ! [class_ "action_item_meta ", data_ "action_type" action_type] $ toHtml action_type
+            maybeM_ behalf_of $ \behalf_of -> do
+                " "
+                small_ ! [class_ "action_item_behalf_of", data_ "behalf_of" behalf_of] $ toHtml behalf_of
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
            ] $ do
@@ -53,6 +56,7 @@ form :: Monad m => (Maybe (Pk ActionItem), ActionItem.Form) -> HtmlT m ()
 form (pk, ActionItem.Form{..}) = form_ ! [ method_ "PUT", action_ "/action-item", spellcheck_ "true"] $ do
     maybeM_ pk $ \pk ->
         input_ [type_ "hidden", name_ "id", value_ $ (T.pack . show) pk]
+    -- TODO project dropdown
     
     div_ $ textarea_ ! [name_ "text", required_ "true", autofocus_, placeholder_ "describe action item"] $
         maybeM_ text toHtml
@@ -64,6 +68,11 @@ form (pk, ActionItem.Form{..}) = form_ ! [ method_ "PUT", action_ "/action-item"
         dropdown_ (maybe (Right "queued") Right action_status) RT.action_status ! [name_ "action_status", required_ "true"]
     div_ $ input_ [type_ "date", name_ "deadline", placeholder_ "due date"]
             ! maybe [] ((:[]) . value_ . T.pack . showTime) deadline
+    div_ $ input_ [type_ "text", name_ "behalf_of", placeholder_ "on behalf of"]
+            ! case behalf_of of
+                Nothing -> []
+                Just Nothing -> [value_ ""]
+                Just (Just behalf_of) -> [value_ behalf_of]
     div_ $ do
         button_ ! [type_ "submit"] $ maybe "Create" (const "Save") pk
         button_ ! [type_ "reset"] $ "Cancel"

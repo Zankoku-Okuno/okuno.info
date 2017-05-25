@@ -1,11 +1,13 @@
 SELECT
     action_item.id,
     text,
+    project_id,
     rt.action_type.description,
+    rt.action_status.description,
     rt.weight.description,
     rt.timescale.description,
     deadline,
-    rt.action_status.description
+    behalf_of
 FROM action_item
     JOIN rt.action_type ON (action_type_id = action_type.id)
     JOIN rt.weight ON (weight_id = weight.id)

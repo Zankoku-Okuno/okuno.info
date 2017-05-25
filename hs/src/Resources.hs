@@ -80,9 +80,11 @@ action_item_R db pk req = do
         in encode json
     getForm q = ActionItem.Form
         { text = T.decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
+        , project = Just $ Pk . read . T.unpack . T.decodeUtf8 <$> query_queryOne q "project"
         , action_type = T.decodeUtf8 <$> query_queryOne q "action_type"
+        , action_status = T.decodeUtf8 <$> query_queryOne q "action_status"
         , weight = T.decodeUtf8 <$> query_queryOne q "weight"
         , timescale = T.decodeUtf8 <$> query_queryOne q "timescale"
-        , action_status = T.decodeUtf8 <$> query_queryOne q "action_status"
         , deadline = readTime =<< T.unpack . T.decodeUtf8 <$> query_queryOne q "deadline"
+        , behalf_of = Just $ T.decodeUtf8 <$> query_queryOne q "behalf_of"
         }
