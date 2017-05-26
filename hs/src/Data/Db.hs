@@ -26,6 +26,8 @@ import Database.PostgreSQL.Simple.ToField
 
 
 newtype Pk a = Pk Int64
+instance Eq (Pk a) where
+    (Pk a) == (Pk b) = a == b
 instance Show (Pk a) where
     show (Pk a) = show a
 instance Read (Pk a) where

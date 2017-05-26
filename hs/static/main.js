@@ -19,8 +19,8 @@ function init_tabs(dom) {
     })
 }
 
-function init_action_item_forms(dom) {
-    dom.querySelectorAll("form[method='PUT'][action='/action-item']").forEach(function (form) {
+function init_put_forms(dom) {
+    dom.querySelectorAll("form[method='PUT']").forEach(function (form) {
         form.addEventListener("submit", function (e) {
             e.preventDefault()
 
@@ -31,7 +31,7 @@ function init_action_item_forms(dom) {
             })
 
             Http.put({
-                url: "/action-item",
+                url: form.action,
                 query: params,
                 headers: {
                     'Accept': "application/htmlfrag+json"
@@ -54,7 +54,9 @@ function init_action_item_forms(dom) {
             .catch(console.log) // TODO
         })
     })
+}
 
+function init_action_item_forms(dom) {
     // adjust the dom after successful action_item persistence
     dom.querySelectorAll("form[action='/action-item']").forEach(function (form) {
         form.addEventListener('create', function (event) {
@@ -78,6 +80,7 @@ function init_action_item_forms(dom) {
 
 function patch_dom(dom) {
     init_tabs(dom)
+    init_put_forms(dom)
     init_action_item_forms(dom)
 
     document.querySelectorAll("*[data-action_item]").forEach(function (item) {

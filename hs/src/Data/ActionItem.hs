@@ -1,6 +1,11 @@
-{-#LANGUAGE RecordWildCards, OverloadedStrings, LambdaCase, ScopedTypeVariables #-}
+{-#LANGUAGE RecordWildCards, OverloadedStrings, LambdaCase, ViewPatterns, ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Data.ActionItem where
+module Data.ActionItem
+    ( ActionItem(..)
+    , Data.ActionItem.all, byProject
+    , byPk
+    , create, update
+    ) where
 
 -- bytes/text
 import qualified Data.Text as T
@@ -10,7 +15,7 @@ import Data.String (IsString(..))
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Db
-import Data.Project
+import Data.Project (Project)
 
 import Util
 
@@ -46,13 +51,17 @@ update item@(Stored pk ActionItem{..}) = do
 
 all :: Sql [Stored ActionItem]
 all = (xformRow <$>) <$> query_ $(fileStr "ActionItem-all.sql")
-    where
-    xformRow (id, text, project, action_type, action_status, weight, timescale, deadline, behalf_of) =
-        Stored id ActionItem{..}
+
+byProject :: Maybe (Stored Project) -> Sql [Stored ActionItem]
+byProject Nothing = (xformRow <$>) <$> query_ $(fileStr "ActionItem-noProject.sql")
+byProject (Just (thePk -> project_id)) = (xformRow <$>) <$> query $(fileStr "ActionItem-byProject.sql") (Only project_id)
 
 byPk :: Pk ActionItem -> Sql (Maybe (Stored ActionItem))
 byPk pk = xform <$> query $(fileStr "ActionItem-byPk.sql") (Only pk)
     where
     xform [] = Nothing
-    xform [(id, text, project, action_type, action_status, weight, timescale, deadline, behalf_of)] =
-        Just $ Stored id ActionItem{..}
+    xform [it] = Just $ xformRow it
+
+
+xformRow (id, text, project, action_type, action_status, weight, timescale, deadline, behalf_of) =
+    Stored id ActionItem{..}

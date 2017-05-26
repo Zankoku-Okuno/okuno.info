@@ -31,29 +31,88 @@ import Data.ActionItem (ActionItem(..))
 import qualified Data.ActionItem as ActionItem
 import qualified Html.ActionItem as ActionItem
 import qualified Form.ActionItem as ActionItem
+import Data.Project (Project(..))
+import qualified Data.Project as Project
+import qualified Html.Project as Project
+import qualified Form.Project as Project
 
 
 index_R :: Db -> NeptuneApp
 index_R db req = do
     when (method req /= "GET") $ Exn.throw (BadVerb ["GET"])
     today <- utctDay <$> getCurrentTime
-    action_items <- transact db $ ActionItem.all
-    render <- throwLeft $ negotiateMedia [("text/plain", text_F), ("text/html", html_F today)] (acceptMedia $ negotiation req)
-    pure $ Response { status = Http.status200, responseBody = Just $ second ($ action_items) render }
+    (projects, action_itemss) <- transact db $ do
+        projects <- Project.all
+        let active_projects = filter (\(Stored _ Project{..}) -> action_status == "active") projects
+            action_lists = Nothing : (Just <$> active_projects)
+        action_items <- ActionItem.byProject `mapM` action_lists
+        pure (projects, action_items)
+    render <- throwLeft $ negotiateMedia [("text/html", html_F (today, projects))] (acceptMedia $ negotiation req)
+    pure $ Response { status = Http.status200, responseBody = Just $ second ($ action_itemss) render }
     where
-    text_F action_items = LT.encodeUtf8 . LT.pack $ unlines $ show <$> action_items
-    html_F today action_items = renderBS $ doctypehtml_ $ do
+    html_F more@(today, projects) action_itemss = renderBS $ doctypehtml_ $ do
         defaultHead
         body_ $ do
-            ActionItem.form def
-            ol_ ! [id_ "action_items"] $
-                forM_ action_items $ \item -> do
-                    li_ ! [data_ "action_item" (T.pack . show $ thePk item)] $ ActionItem.full today item
+            div_ ! [style_ "display: flex; "] $ do
+                ActionItem.form projects def
+                a_ ! [href_ "/projects"] $ "All Projects"
+            hr_ []
+            div_ ! [ style_ "display: flex; justify-content: space-around; "] $ do
+                forM_ action_itemss $ \action_items -> do
+                    div_ $ do
+                        ol_ ! [id_ "action_items"] $ -- FIXME id_ is inappropriate
+                            forM_ action_items $ \item -> do
+                                li_ ! [data_ "action_item" (T.pack . show $ thePk item)] $ ActionItem.full more item
+
+projects_R :: Db -> NeptuneApp
+projects_R db req = do
+    projects <- transact db $ Project.all
+    render <- throwLeft $ negotiateMedia [("text/html", html_F)] (acceptMedia $ negotiation req)
+    pure $ Response { status = Http.status200, responseBody = Just $ second ($ projects) render }
+    where
+    html_F projects = renderBS $ doctypehtml_ $ do
+        defaultHead
+        body_ $ do
+            Project.form def
+            ol_ ! [id_ "projects"] $ forM_ projects $ \project -> do
+                li_ $ Project.full project
+
+project_R :: Db -> Maybe (Pk Project) -> NeptuneApp
+project_R db pk req = do
+    render <- throwLeft $ negotiateMedia [("application/htmlfrag+json", htmlfrag_F)] (acceptMedia $ negotiation req)
+    project <- case method req of
+        "GET" -> do
+            pk <- throwMaybe BadResource pk
+            transact db $ Project.byPk pk >>= \case
+                Nothing -> Exn.throw BadResource
+                Just project -> pure project
+        "PUT" -> do
+            let form = getForm (snd $ resourceId req) :: Project.Form
+            item <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
+            case pk of
+                Nothing -> transact db $ Project.create item
+                Just pk -> transact db $ do
+                    result <- Project.update (Stored pk item)
+                    throwMaybe BadResource result
+        _ -> Exn.throw $ BadVerb ["GET", "PUT"]
+    pure $ Response { status = Http.status200, responseBody = Just $ second ($ project) render } -- FIXME status201 where appropriate
+    where
+    htmlfrag_F project =
+        let html = renderText $ Project.full project
+            json = object ["id" .= thePk project, "project" .= html]
+        in encode json
+    getForm q = Project.Form
+        { name = T.decodeUtf8 <$> query_queryOne q "name"
+        , mission = T.decodeUtf8 <$> query_queryOne q "mission"
+        , action_type = T.decodeUtf8 <$> query_queryOne q "action_type"
+        , action_status = T.decodeUtf8 <$> query_queryOne q "action_status"
+        }
 
 action_item_R :: Db -> Maybe (Pk ActionItem) -> NeptuneApp
 action_item_R db pk req = do
     today <- utctDay <$> getCurrentTime
-    render <- throwLeft $ negotiateMedia [("text/html", html_F today), ("application/htmlfrag+json", htmlfrag_F today)] (acceptMedia $ negotiation req)
+    projects <- transact db $ Project.all
+    render <- throwLeft $ negotiateMedia [("text/html", html_F (today, projects)), ("application/htmlfrag+json", htmlfrag_F (today, projects))] (acceptMedia $ negotiation req)
     item <- case method req of
         "GET" -> do
             pk <- throwMaybe BadResource pk
@@ -71,11 +130,11 @@ action_item_R db pk req = do
         _ -> Exn.throw $ BadVerb ["GET", "PUT"]
     pure $ Response { status = Http.status200, responseBody = Just $ second ($ item) render } -- FIXME status201 where appropriate
     where
-    html_F today item = renderBS $ doctypehtml_ $ do
+    html_F more item = renderBS $ doctypehtml_ $ do
         defaultHead
-        body_ $ ActionItem.full today item
-    htmlfrag_F today item = 
-        let html = renderText $ ActionItem.full today item
+        body_ $ ActionItem.full more item
+    htmlfrag_F more item = 
+        let html = renderText $ ActionItem.full more item
             json = object ["id" .= thePk item, "action_item" .= html]
         in encode json
     getForm q = ActionItem.Form
