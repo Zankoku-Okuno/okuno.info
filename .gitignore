@@ -1,6 +1,6 @@
-.py3env/
-*~
-__pycache__
-secrets
-*.pyc
-db/
+*.hi
+*.ho
+dist/
+.cabal-sandbox/
+cabal.sandbox.config
+bower_components/
