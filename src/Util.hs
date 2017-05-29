@@ -2,6 +2,7 @@ module Util (
       runMaybe
     , throwMaybe
     , throwLeft
+    , throwLeftM
     , maybeM_
     , showTime, readTime
     , fileStr
@@ -24,6 +25,10 @@ runMaybe (Just v) _ f = f v
 throwLeft :: (Monad m, MonadThrow m) => Exception e => Either e a -> m a
 throwLeft (Left e) = throw e
 throwLeft (Right v) = pure v
+
+throwLeftM :: (Monad m, MonadThrow m) => Exception e => Either e (m a) -> m a
+throwLeftM (Left e) = throw e
+throwLeftM (Right action) = action
 
 throwMaybe :: (Monad m, MonadThrow m) => Exception e => e -> Maybe a -> m a
 throwMaybe e Nothing = throw e

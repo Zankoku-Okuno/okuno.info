@@ -27,9 +27,7 @@ weight = unsafePerformIO $ readIORef _weight_ref
 timescale = unsafePerformIO $ readIORef _timescale_ref
 
 _action_type_ref, _action_status_ref, _weight_ref, _timescale_ref :: IORef [Text]
-_action_type_ref = unsafePerformIO $ newIORef uninitd
-_action_status_ref = unsafePerformIO $ newIORef uninitd
-_weight_ref = unsafePerformIO $ newIORef uninitd
-_timescale_ref = unsafePerformIO $ newIORef uninitd
-
-uninitd = error "reference tables uninitialized"
+_action_type_ref = unsafePerformIO $ newIORef (error "Data.refTables._action_type_ref uninitialized")
+_action_status_ref = unsafePerformIO $ newIORef (error "Data.refTables._action_status_ref uninitialized")
+_weight_ref = unsafePerformIO $ newIORef (error "Data.refTables._weight_ref uninitialized")
+_timescale_ref = unsafePerformIO $ newIORef (error "Data.refTables._timescale_ref uninitialized")

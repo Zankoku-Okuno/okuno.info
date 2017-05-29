@@ -12,7 +12,7 @@ import Data.Aeson
 import qualified Network.HTTP.Types as Http
 
 import Data.Default
-import Util (throwMaybe, throwLeft, readTime)
+import Util
 import Data.Db
 import Form
 import Html
@@ -29,17 +29,17 @@ import qualified Form.Project as Project
 
 
 index_R :: Db -> NeptuneApp
-index_R db req = do
-    when (method req /= "GET") $ throw (BadVerb ["GET"])
-    today <- utctDay <$> getCurrentTime
-    (projects, action_itemss) <- transact db $ do
-        projects <- Project.all
-        let active_projects = filter (\(Stored _ Project{..}) -> action_status == "active") projects
-            action_lists = Nothing : (Just <$> active_projects)
-        action_items <- ActionItem.byProject `mapM` action_lists
-        pure (projects, action_items)
-    render <- throwLeft $ negotiateMedia [("text/html", html_F (today, projects))] (acceptMedia $ negotiation req)
-    pure $ Response { status = Http.status200, responseBody = Just $ second ($ action_itemss) render }
+index_R db req = throwLeftM $ verb (method req) $
+    "GET" >: do
+        today <- utctDay <$> getCurrentTime
+        (projects, action_itemss) <- transact db $ do
+            projects <- Project.all
+            let active_projects = filter (\(Stored _ Project{..}) -> action_status == "active") projects
+                action_lists = Nothing : (Just <$> active_projects)
+            action_items <- ActionItem.byProject `mapM` action_lists
+            pure (projects, action_items)
+        render <- throwLeft $ negotiateMedia [("text/html", html_F (today, projects))] (acceptMedia $ negotiation req)
+        pure $ Response { status = Http.status200, responseBody = Just $ second ($ action_itemss) render }
     where
     html_F :: (Day, [Stored Project]) -> [[Stored ActionItem]] -> LBS.ByteString
     html_F more@(today, projects) action_itemss = renderBS $ doctypehtml_ $ do
@@ -57,10 +57,11 @@ index_R db req = do
                                 li_ ! [data_ "action_item" (tshow $ thePk item)] $ ActionItem.full more item
 
 projects_R :: Db -> NeptuneApp
-projects_R db req = do
-    projects <- transact db $ Project.all
-    render <- throwLeft $ negotiateMedia [("text/html", html_F)] (acceptMedia $ negotiation req)
-    pure $ Response { status = Http.status200, responseBody = Just $ second ($ projects) render }
+projects_R db req = throwLeftM $ verb (method req) $
+    "GET" >: do
+        projects <- transact db $ Project.all
+        render <- throwLeft $ negotiateMedia [("text/html", html_F)] (acceptMedia $ negotiation req)
+        pure $ Response { status = Http.status200, responseBody = Just $ second ($ projects) render }
     where
     html_F :: [Stored Project] -> LBS.ByteString
     html_F projects = renderBS $ doctypehtml_ $ do
@@ -73,13 +74,13 @@ projects_R db req = do
 project_R :: Db -> Maybe (Pk Project) -> NeptuneApp
 project_R db pk req = do
     render <- throwLeft $ negotiateMedia [("application/htmlfrag+json", htmlfrag_F)] (acceptMedia $ negotiation req)
-    project <- case method req of
-        "GET" -> do
+    project <- throwLeftM $ verbs (method req)
+        [ "GET" >: do
             pk <- throwMaybe BadResource pk
             transact db $ Project.byPk pk >>= \case
                 Nothing -> throw BadResource
                 Just project -> pure project
-        "PUT" -> do
+        , "PUT" >: do
             let form = getForm (snd $ resourceId req) :: Project.Form
             item <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
             case pk of
@@ -87,7 +88,7 @@ project_R db pk req = do
                 Just pk -> transact db $ do
                     result <- Project.update (Stored pk item)
                     throwMaybe BadResource result
-        _ -> throw $ BadVerb ["GET", "PUT"]
+        ]
     pure $ Response { status = Http.status200, responseBody = Just $ second ($ project) render } -- FIXME status201 where appropriate
     where
     htmlfrag_F project =
@@ -106,13 +107,13 @@ action_item_R db pk req = do
     today <- utctDay <$> getCurrentTime
     projects <- transact db $ Project.all
     render <- throwLeft $ negotiateMedia [("text/html", html_F (today, projects)), ("application/htmlfrag+json", htmlfrag_F (today, projects))] (acceptMedia $ negotiation req)
-    item <- case method req of
-        "GET" -> do
+    item <- throwLeftM $ verbs (method req)
+        [ "GET" >: do
             pk <- throwMaybe BadResource pk
             transact db $ ActionItem.byPk pk >>= \case
                 Nothing -> throw BadResource
                 Just item -> pure item
-        "PUT" -> do
+        , "PUT" >: do
             let form = getForm (snd $ resourceId req) :: ActionItem.Form
             item <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
             case pk of
@@ -120,7 +121,7 @@ action_item_R db pk req = do
                 Just pk -> transact db $ do
                     result <- ActionItem.update (Stored pk item)
                     throwMaybe BadResource result
-        _ -> throw $ BadVerb ["GET", "PUT"]
+        ]
     pure $ Response { status = Http.status200, responseBody = Just $ second ($ item) render } -- FIXME status201 where appropriate
     where
     html_F more item = renderBS $ doctypehtml_ $ do
