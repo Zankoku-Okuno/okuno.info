@@ -1,4 +1,3 @@
-{-#LANGUAGE RecordWildCards, OverloadedStrings, LambdaCase, ViewPatterns, ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Data.ActionItem
     ( ActionItem(..)
@@ -7,17 +6,11 @@ module Data.ActionItem
     , create, update
     ) where
 
--- bytes/text
-import qualified Data.Text as T
-import Data.Text (Text)
-import Data.String (IsString(..))
-
-import Data.Time.Calendar
-import Data.Time.Clock
+import ClassyPrelude
+import Util (fileStr)
 import Data.Db
-import Data.Project (Project)
 
-import Util
+import Data.Project (Project)
 
 
 data ActionItem = ActionItem

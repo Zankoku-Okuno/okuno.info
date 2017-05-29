@@ -1,7 +1,7 @@
 {-#LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances, UndecidableInstances #-}
 module Form where
 
-import Util
+import ClassyPrelude
 import Data.Db
 
 

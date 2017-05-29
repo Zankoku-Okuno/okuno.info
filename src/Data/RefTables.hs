@@ -1,12 +1,11 @@
-{-#LANGUAGE OverloadedStrings #-}
 {-#LANGUAGE RankNTypes #-}
 module Data.RefTables
     ( initialize
     , action_type, action_status, weight, timescale
     ) where
 
-import Data.Text (Text)
-import Data.IORef
+import ClassyPrelude
+
 import System.IO.Unsafe
 import Data.Db
 
@@ -28,7 +27,9 @@ weight = unsafePerformIO $ readIORef _weight_ref
 timescale = unsafePerformIO $ readIORef _timescale_ref
 
 _action_type_ref, _action_status_ref, _weight_ref, _timescale_ref :: IORef [Text]
-_action_type_ref = unsafePerformIO $ newIORef undefined
-_action_status_ref = unsafePerformIO $ newIORef undefined
-_weight_ref = unsafePerformIO $ newIORef undefined
-_timescale_ref = unsafePerformIO $ newIORef undefined
+_action_type_ref = unsafePerformIO $ newIORef uninitd
+_action_status_ref = unsafePerformIO $ newIORef uninitd
+_weight_ref = unsafePerformIO $ newIORef uninitd
+_timescale_ref = unsafePerformIO $ newIORef uninitd
+
+uninitd = error "reference tables uninitialized"

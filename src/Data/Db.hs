@@ -8,16 +8,12 @@ module Data.Db (
     , query, query_
     -- re-exports
     , Sql.Only(..)
-    , Int64
 ) where
 
-import Data.Int (Int64)
-import qualified Data.Text as T
+import ClassyPrelude
+import Text.Read (readsPrec)
 
 import Data.Aeson
-
-import Control.Arrow
-import Control.Monad.Reader
 
 import Database.PostgreSQL.Simple (ToRow, FromRow)
 import qualified Database.PostgreSQL.Simple as Sql
@@ -39,7 +35,7 @@ data Stored a = Stored { thePk :: Pk a, thePayload :: a }
     deriving (Show)
 
 newtype Sql a = Sql { unSql :: ReaderT Sql.Connection IO a }
-    deriving (Functor, Applicative, Monad, MonadIO)
+    deriving (Functor, Applicative, Monad, MonadThrow, MonadIO)
 
 type Db = forall a. (Sql.Connection -> IO a) -> IO a
 transact :: Db -> Sql a -> IO a

@@ -1,13 +1,9 @@
-{-#LANGUAGE OverloadedStrings, RecordWildCards, DuplicateRecordFields, OverloadedLabels #-}
 {-#LANGUAGE MultiParamTypeClasses #-}
 module Form.ActionItem where
 
-import Data.Text (Text)
-import qualified Data.Text as T
+import ClassyPrelude
 
-import Data.Time.Calendar (Day)
-
-import Util
+import Data.Default
 import Data.Db
 import Form
 

@@ -1,12 +1,8 @@
-{-#LANGUAGE OverloadedStrings, RecordWildCards, ViewPatterns, MultiWayIf #-}
 module Html.Project where
 
-import Data.Text (Text)
-import qualified Data.Text as T
+import ClassyPrelude
 
-import Data.Time (Day)
-
-import Util
+import Util (maybeM_)
 import Data.Db
 import Form
 import Html
@@ -19,7 +15,7 @@ import qualified Form.Project as Project
 
 full :: Monad m => Stored Project -> HtmlT m ()
 full project@(Stored pk Project{..}) = do
-    let tabset = T.concat ["project-", T.pack $ show pk]
+    let tabset = concat ["project-", tshow pk]
     select_ [data_ "tabs" tabset] $ do
         option_ ! [value_ "view", selected_ "true"] $ "View"
         option_ ! [value_ "edit"] $ "Edit"
@@ -40,7 +36,7 @@ full project@(Stored pk Project{..}) = do
 form :: Monad m => (Maybe (Pk Project), Project.Form) -> HtmlT m ()
 form (pk, Project.Form{..}) = form_ ! [ method_ "PUT", action_ "/project", spellcheck_ "true"] $ do
     maybeM_ pk $ \pk ->
-        input_ [type_ "hidden", name_ "id", value_ $ (T.pack . show) pk]
+        input_ [type_ "hidden", name_ "id", value_ $ tshow pk]
     
     div_ $ input_ [type_ "text", name_ "name", required_ "true", autofocus_, placeholder_ "name"]
                   ! maybe [] ((:[]) . value_) name

@@ -1,27 +1,18 @@
-{-#LANGUAGE OverloadedStrings, RecordWildCards, DuplicateRecordFields, OverloadedLabels, ViewPatterns, LambdaCase #-}
 {-#LANGUAGE RankNTypes #-}
 module Resources where
 
-import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Text.Lazy.Encoding as LT
-import qualified Data.Text.Lazy as LT
+import ClassyPrelude
+import Text.Read (read)
+
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-
 import Lucid
 import Data.Aeson
 
-import Data.Time (getCurrentTime, utctDay)
 import qualified Network.HTTP.Types as Http
 
-import Data.Maybe
-import Control.Arrow
-import Control.Monad
-import qualified Control.Exception as Exn
-
-import Util
+import Data.Default
+import Util (throwMaybe, throwLeft, readTime)
 import Data.Db
 import Form
 import Html
@@ -39,7 +30,7 @@ import qualified Form.Project as Project
 
 index_R :: Db -> NeptuneApp
 index_R db req = do
-    when (method req /= "GET") $ Exn.throw (BadVerb ["GET"])
+    when (method req /= "GET") $ throw (BadVerb ["GET"])
     today <- utctDay <$> getCurrentTime
     (projects, action_itemss) <- transact db $ do
         projects <- Project.all
@@ -50,6 +41,7 @@ index_R db req = do
     render <- throwLeft $ negotiateMedia [("text/html", html_F (today, projects))] (acceptMedia $ negotiation req)
     pure $ Response { status = Http.status200, responseBody = Just $ second ($ action_itemss) render }
     where
+    html_F :: (Day, [Stored Project]) -> [[Stored ActionItem]] -> LBS.ByteString
     html_F more@(today, projects) action_itemss = renderBS $ doctypehtml_ $ do
         defaultHead
         body_ $ do
@@ -62,7 +54,7 @@ index_R db req = do
                     div_ $ do
                         ol_ ! [id_ "action_items"] $ -- FIXME id_ is inappropriate
                             forM_ action_items $ \item -> do
-                                li_ ! [data_ "action_item" (T.pack . show $ thePk item)] $ ActionItem.full more item
+                                li_ ! [data_ "action_item" (tshow $ thePk item)] $ ActionItem.full more item
 
 projects_R :: Db -> NeptuneApp
 projects_R db req = do
@@ -70,6 +62,7 @@ projects_R db req = do
     render <- throwLeft $ negotiateMedia [("text/html", html_F)] (acceptMedia $ negotiation req)
     pure $ Response { status = Http.status200, responseBody = Just $ second ($ projects) render }
     where
+    html_F :: [Stored Project] -> LBS.ByteString
     html_F projects = renderBS $ doctypehtml_ $ do
         defaultHead
         body_ $ do
@@ -84,7 +77,7 @@ project_R db pk req = do
         "GET" -> do
             pk <- throwMaybe BadResource pk
             transact db $ Project.byPk pk >>= \case
-                Nothing -> Exn.throw BadResource
+                Nothing -> throw BadResource
                 Just project -> pure project
         "PUT" -> do
             let form = getForm (snd $ resourceId req) :: Project.Form
@@ -94,7 +87,7 @@ project_R db pk req = do
                 Just pk -> transact db $ do
                     result <- Project.update (Stored pk item)
                     throwMaybe BadResource result
-        _ -> Exn.throw $ BadVerb ["GET", "PUT"]
+        _ -> throw $ BadVerb ["GET", "PUT"]
     pure $ Response { status = Http.status200, responseBody = Just $ second ($ project) render } -- FIXME status201 where appropriate
     where
     htmlfrag_F project =
@@ -102,10 +95,10 @@ project_R db pk req = do
             json = object ["id" .= thePk project, "project" .= html]
         in encode json
     getForm q = Project.Form
-        { name = T.decodeUtf8 <$> query_queryOne q "name"
-        , mission = T.decodeUtf8 <$> query_queryOne q "mission"
-        , action_type = T.decodeUtf8 <$> query_queryOne q "action_type"
-        , action_status = T.decodeUtf8 <$> query_queryOne q "action_status"
+        { name = decodeUtf8 <$> query_queryOne q "name"
+        , mission = decodeUtf8 <$> query_queryOne q "mission"
+        , action_type = decodeUtf8 <$> query_queryOne q "action_type"
+        , action_status = decodeUtf8 <$> query_queryOne q "action_status"
         }
 
 action_item_R :: Db -> Maybe (Pk ActionItem) -> NeptuneApp
@@ -117,7 +110,7 @@ action_item_R db pk req = do
         "GET" -> do
             pk <- throwMaybe BadResource pk
             transact db $ ActionItem.byPk pk >>= \case
-                Nothing -> Exn.throw BadResource
+                Nothing -> throw BadResource
                 Just item -> pure item
         "PUT" -> do
             let form = getForm (snd $ resourceId req) :: ActionItem.Form
@@ -127,7 +120,7 @@ action_item_R db pk req = do
                 Just pk -> transact db $ do
                     result <- ActionItem.update (Stored pk item)
                     throwMaybe BadResource result
-        _ -> Exn.throw $ BadVerb ["GET", "PUT"]
+        _ -> throw $ BadVerb ["GET", "PUT"]
     pure $ Response { status = Http.status200, responseBody = Just $ second ($ item) render } -- FIXME status201 where appropriate
     where
     html_F more item = renderBS $ doctypehtml_ $ do
@@ -138,12 +131,12 @@ action_item_R db pk req = do
             json = object ["id" .= thePk item, "action_item" .= html]
         in encode json
     getForm q = ActionItem.Form
-        { text = T.decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
-        , project = Just $ Pk . read . T.unpack . T.decodeUtf8 <$> query_queryOne q "project"
-        , action_type = T.decodeUtf8 <$> query_queryOne q "action_type"
-        , action_status = T.decodeUtf8 <$> query_queryOne q "action_status"
-        , weight = T.decodeUtf8 <$> query_queryOne q "weight"
-        , timescale = T.decodeUtf8 <$> query_queryOne q "timescale"
-        , deadline = readTime =<< T.unpack . T.decodeUtf8 <$> query_queryOne q "deadline"
-        , behalf_of = Just $ T.decodeUtf8 <$> query_queryOne q "behalf_of"
+        { text = decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
+        , project = Just $ Pk . read . unpack . decodeUtf8 <$> query_queryOne q "project"
+        , action_type = decodeUtf8 <$> query_queryOne q "action_type"
+        , action_status = decodeUtf8 <$> query_queryOne q "action_status"
+        , weight = decodeUtf8 <$> query_queryOne q "weight"
+        , timescale = decodeUtf8 <$> query_queryOne q "timescale"
+        , deadline = readTime =<< unpack . decodeUtf8 <$> query_queryOne q "deadline"
+        , behalf_of = Just $ decodeUtf8 <$> query_queryOne q "behalf_of"
         }

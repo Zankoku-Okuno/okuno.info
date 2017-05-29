@@ -1,4 +1,3 @@
-{-#LANGUAGE RecordWildCards, OverloadedStrings, LambdaCase, ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Data.Project
     ( Project(..)
@@ -6,14 +5,10 @@ module Data.Project
     , create, update
     ) where
 
--- bytes/text
-import qualified Data.Text as T
-import Data.Text (Text)
-import Data.String (IsString(..))
+import ClassyPrelude
 
 import Data.Db
-
-import Util
+import Util (fileStr)
 
 
 data Project = Project

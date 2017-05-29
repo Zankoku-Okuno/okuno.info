@@ -1,4 +1,3 @@
-{-#LANGUAGE OverloadedStrings, RecordWildCards, ViewPatterns #-}
 module Html (
       module Lucid
     , dropdown_, (!)
@@ -6,9 +5,7 @@ module Html (
     , defaultHead
     ) where
 
-import Data.Text (Text)
-
-import Control.Monad
+import ClassyPrelude
 
 import Lucid
 import Lucid.Base (TermRaw(..))
