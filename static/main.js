@@ -58,7 +58,7 @@ function init_put_forms(dom) {
 
 function init_action_item_forms(dom) {
     // adjust the dom after successful action_item persistence
-    dom.querySelectorAll("form[action='/action-item']").forEach(function (form) {
+    dom.querySelectorAll("form.action-item").forEach(function (form) {
         form.addEventListener('create', function (event) {
             var li = document.createElement('li')
             li.dataset['action_item'] = event.detail.id
@@ -86,7 +86,7 @@ function patch_dom(dom) {
     document.querySelectorAll("*[data-action_item]").forEach(function (item) {
         var tabset = "action_item-"+item.dataset["action_item"]
         var controller = item.querySelector("select[data-tabs='"+tabset+"'")
-        var form = item.querySelector("form[method='PUT'][action='/action-item']")
+        var form = item.querySelector("form[method='PUT'].action-item")
         if (controller !== null && form !== null) {
             controller.addEventListener('change', function () {
                 form.reset()

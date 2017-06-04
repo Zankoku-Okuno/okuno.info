@@ -14,7 +14,7 @@ instance IsString Username where
     fromString = Username . fromString
 
 data Client = Client
-    { name :: Text
+    { name :: Username
     , email :: Text
     }
 
@@ -26,4 +26,4 @@ byName (theUName -> name) = xform <$> query "SELECT id, name, email FROM client 
     xform [it] = Just $ xformRow it
 
 
-xformRow (id, name, email) = Stored id Client{..}
+xformRow (id, Username -> name, email) = Stored id Client{..}

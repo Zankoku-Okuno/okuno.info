@@ -28,29 +28,30 @@ import qualified Html.Project as Project
 import qualified Form.Project as Project
 import Data.Client (Client(..), Username(..))
 import qualified Data.Client as Client
+import Html.Client (userUrl)
 
 
 dashboard_R :: Db -> Username -> NeptuneApp
 dashboard_R db username req = throwLeftM $ verb (method req) $
     "GET" >: do
         today <- utctDay <$> getCurrentTime
-        (projects, action_itemss) <- transact db $ do
+        (client, projects, action_itemss) <- transact db $ do
             client <- throwMaybe BadResource =<< Client.byName username
             projects <- Project.byClient client
             let active_projects = filter (\(Stored _ Project{..}) -> action_status == "active") projects
                 action_lists = Nothing : (Just <$> active_projects)
             action_items <- ActionItem.dashboard client `mapM` action_lists
-            pure (projects, action_items)
-        render <- throwLeft $ negotiateMedia [("text/html", html_F (today, projects))] (acceptMedia $ negotiation req)
+            pure (client, projects, action_items)
+        render <- throwLeft $ negotiateMedia [("text/html", html_F (today, client, projects))] (acceptMedia $ negotiation req)
         pure $ Response { status = Http.status200, responseBody = Just $ second ($ action_itemss) render }
     where
-    html_F :: (Day, [Stored Project]) -> [[Stored ActionItem]] -> LBS.ByteString
-    html_F more@(today, projects) action_itemss = renderBS $ doctypehtml_ $ do
+    html_F :: (Day, Stored Client, [Stored Project]) -> [[Stored ActionItem]] -> LBS.ByteString
+    html_F more@(_, client, projects) action_itemss = renderBS $ doctypehtml_ $ do
         defaultHead
         body_ $ do
             div_ ! [style_ "display: flex; "] $ do
-                ActionItem.form projects def
-                a_ ! [href_ "/projects"] $ "All Projects"
+                ActionItem.form (client, projects) def
+                a_ ! [href_ $ userUrl client "/projects"] $ "All Projects"
             hr_ []
             div_ ! [ style_ "display: flex; justify-content: space-around; "] $ do
                 forM_ action_itemss $ \action_items -> do
@@ -62,42 +63,48 @@ dashboard_R db username req = throwLeftM $ verb (method req) $
 projects_R :: Db -> Username -> NeptuneApp
 projects_R db username req = throwLeftM $ verb (method req) $
     "GET" >: do
-        projects <- transact db $ do
+        (client, projects) <- transact db $ do
             client <- throwMaybe BadResource =<< Client.byName username
-            Project.byClient client
-        render <- throwLeft $ negotiateMedia [("text/html", html_F)] (acceptMedia $ negotiation req)
+            projects <- Project.byClient client
+            pure (client, projects)
+        render <- throwLeft $ negotiateMedia [("text/html", html_F client)] (acceptMedia $ negotiation req)
         pure $ Response { status = Http.status200, responseBody = Just $ second ($ projects) render }
     where
-    html_F :: [Stored Project] -> LBS.ByteString
-    html_F projects = renderBS $ doctypehtml_ $ do
+    html_F :: Stored Client -> [Stored Project] -> LBS.ByteString
+    html_F client projects = renderBS $ doctypehtml_ $ do
         defaultHead
         body_ $ do
-            Project.form def
+            Project.form client def
             ol_ ! [id_ "projects"] $ forM_ projects $ \project -> do
-                li_ $ Project.full project
+                li_ $ Project.full client project
 
 project_R :: Db -> (Maybe (Pk Project), Username) -> NeptuneApp
 project_R db (pk, username) req = do
-    render <- throwLeft $ negotiateMedia [("application/htmlfrag+json", htmlfrag_F)] (acceptMedia $ negotiation req)
-    project <- throwLeftM $ verbs (method req)
+    (client, project) <- throwLeftM $ verbs (method req)
         [ "GET" >: do
             pk <- throwMaybe BadResource pk
-            transact db $ throwMaybe BadResource =<< Project.byPk pk
+            transact db $ do
+                client <- throwMaybe BadResource =<< Client.byName username
+                project <- throwMaybe BadResource =<< Project.byPk pk
+                pure (client, project)
         , "PUT" >: do
             let form = getForm (snd $ resourceId req) :: Project.Form
             project <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
             case pk of
                 Nothing -> transact db $ do
                     client <- throwMaybe BadResource =<< Client.byName username
-                    Project.create client project
+                    project <- Project.create client project
+                    pure (client, project)
                 Just pk -> transact db $ do
-                    result <- Project.update (Stored pk project)
-                    throwMaybe BadResource result
+                    client <- throwMaybe BadResource =<< Client.byName username
+                    project <- throwMaybe BadResource =<< Project.update (Stored pk project)
+                    pure (client, project)
         ]
+    render <- throwLeft $ negotiateMedia [("application/htmlfrag+json", htmlfrag_F client)] (acceptMedia $ negotiation req)
     pure $ Response { status = Http.status200, responseBody = Just $ second ($ project) render } -- FIXME status201 where appropriate
     where
-    htmlfrag_F project =
-        let html = renderText $ Project.full project
+    htmlfrag_F client project =
+        let html = renderText $ Project.full client project
             json = object ["id" .= thePk project, "project" .= html]
         in encode json
     getForm q = Project.Form
@@ -110,10 +117,14 @@ project_R db (pk, username) req = do
 action_item_R :: Db -> (Maybe (Pk ActionItem), Username) -> NeptuneApp
 action_item_R db (pk, username) req = do
     today <- utctDay <$> getCurrentTime
-    projects <- transact db $ do
+    (client, projects) <- transact db $ do
             client <- throwMaybe BadResource =<< Client.byName username
-            Project.byClient client
-    render <- throwLeft $ negotiateMedia [("text/html", html_F (today, projects)), ("application/htmlfrag+json", htmlfrag_F (today, projects))] (acceptMedia $ negotiation req)
+            project <- Project.byClient client
+            pure (client, project)
+    render <- throwLeft $ negotiateMedia
+                [ ("text/html", html_F (today, client, projects))
+                , ("application/htmlfrag+json", htmlfrag_F (today, client, projects))
+                ] (acceptMedia $ negotiation req)
     item <- throwLeftM $ verbs (method req)
         [ "GET" >: do
             pk <- throwMaybe BadResource pk

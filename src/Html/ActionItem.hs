@@ -12,10 +12,12 @@ import Data.ActionItem (ActionItem(..))
 import qualified Data.ActionItem as ActionItem
 import qualified Form.ActionItem as ActionItem
 import Data.Project (Project(..))
+import Data.Client (Client(..), Username(..))
+import Html.Client
 
 
-full :: Monad m => (Day, [Stored Project]) -> Stored ActionItem -> HtmlT m ()
-full (today, projects) item@(Stored pk ActionItem{..}) = do
+full :: Monad m => (Day, Stored Client, [Stored Project]) -> Stored ActionItem -> HtmlT m ()
+full (today, client, projects) item@(Stored pk ActionItem{..}) = do
     let tabset = concat ["action_item-", tshow pk]
     select_ [data_ "tabs" tabset] $ do
         option_ ! [value_ "view", selected_ "true"] $ "View"
@@ -47,31 +49,35 @@ full (today, projects) item@(Stored pk ActionItem{..}) = do
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
            ] $ do
-        form projects (first Just $ toForm item) ! [autocomplete_ "off"]
+        form (client, projects) (first Just $ toForm item) ! [autocomplete_ "off"]
 
-form :: Monad m => [Stored Project] -> (Maybe (Pk ActionItem), ActionItem.Form) -> HtmlT m ()
-form projects (pk, ActionItem.Form{..}) = form_ ! [ method_ "PUT", action_ "/action-item", spellcheck_ "true"] $ do
-    maybeM_ pk $ \pk ->
-        input_ [type_ "hidden", name_ "id", value_ $ tshow pk]
+form :: Monad m => (Stored Client, [Stored Project]) -> (Maybe (Pk ActionItem), ActionItem.Form) -> HtmlT m ()
+form (client, projects) (pk, ActionItem.Form{..}) = do
+    form_ ! [ method_ "PUT"
+            , action_ $ userUrl client "/action-item"
+            , class_ "action-item "
+            , spellcheck_ "true"] $ do
+        maybeM_ pk $ \pk ->
+            input_ [type_ "hidden", name_ "id", value_ $ tshow pk]
 
-    div_ $ textarea_ ! [name_ "text", required_ "true", autofocus_, placeholder_ "describe action item"] $
-        maybeM_ text toHtml
-    div_ $ do
-        dropdown_ (maybe (Left "select type") Right action_type) RT.action_type ! [name_ "action_type", required_ "true"]
-        dropdown_ (maybe (Left "select timescale") Right timescale) RT.timescale ! [name_ "timescale", required_ "true"]
-        dropdown_ (maybe (Left "select weight") Right weight) RT.weight ! [name_ "weight", required_ "true"]
-        dropdown_ (maybe (Right "queued") Right action_status) RT.action_status ! [name_ "action_status", required_ "true"]
-    select_ ! [name_ "project"] $ do
-        option_ ! [value_ ""] ! maybe [] (const [selected_ "true"]) (join project) $ "unassigned"
-        forM_ projects $ \(Stored pk Project{..}) -> do
-            option_ ! [value_ $ tshow pk] ! (if (join project) == (Just pk) then [selected_ "true"] else []) $ toHtml name
-    div_ $ input_ [type_ "date", name_ "deadline", placeholder_ "due date"]
-            ! maybe [] ((:[]) . value_ . pack . showTime) deadline
-    div_ $ input_ [type_ "text", name_ "behalf_of", placeholder_ "on behalf of"]
-            ! case behalf_of of
-                Nothing -> []
-                Just Nothing -> [value_ ""]
-                Just (Just behalf_of) -> [value_ behalf_of]
-    div_ $ do
-        button_ ! [type_ "submit"] $ maybe "Create" (const "Save") pk
-        button_ ! [type_ "reset"] $ "Cancel"
+        div_ $ textarea_ ! [name_ "text", required_ "true", autofocus_, placeholder_ "describe action item"] $
+            maybeM_ text toHtml
+        div_ $ do
+            dropdown_ (maybe (Left "select type") Right action_type) RT.action_type ! [name_ "action_type", required_ "true"]
+            dropdown_ (maybe (Left "select timescale") Right timescale) RT.timescale ! [name_ "timescale", required_ "true"]
+            dropdown_ (maybe (Left "select weight") Right weight) RT.weight ! [name_ "weight", required_ "true"]
+            dropdown_ (maybe (Right "queued") Right action_status) RT.action_status ! [name_ "action_status", required_ "true"]
+        select_ ! [name_ "project"] $ do
+            option_ ! [value_ ""] ! maybe [] (const [selected_ "true"]) (join project) $ "unassigned"
+            forM_ projects $ \(Stored pk Project{..}) -> do
+                option_ ! [value_ $ tshow pk] ! (if (join project) == (Just pk) then [selected_ "true"] else []) $ toHtml name
+        div_ $ input_ [type_ "date", name_ "deadline", placeholder_ "due date"]
+                ! maybe [] ((:[]) . value_ . pack . showTime) deadline
+        div_ $ input_ [type_ "text", name_ "behalf_of", placeholder_ "on behalf of"]
+                ! case behalf_of of
+                    Nothing -> []
+                    Just Nothing -> [value_ ""]
+                    Just (Just behalf_of) -> [value_ behalf_of]
+        div_ $ do
+            button_ ! [type_ "submit"] $ maybe "Create" (const "Save") pk
+            button_ ! [type_ "reset"] $ "Cancel"
