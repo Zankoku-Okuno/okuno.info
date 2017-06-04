@@ -26,16 +26,16 @@ import Data.Project (Project(..))
 import qualified Data.Project as Project
 import qualified Html.Project as Project
 import qualified Form.Project as Project
-import Data.Client (Client(..))
+import Data.Client (Client(..), Username(..))
 import qualified Data.Client as Client
 
 
-index_R :: Db -> NeptuneApp
-index_R db req = throwLeftM $ verb (method req) $
+dashboard_R :: Db -> Username -> NeptuneApp
+dashboard_R db username req = throwLeftM $ verb (method req) $
     "GET" >: do
         today <- utctDay <$> getCurrentTime
         (projects, action_itemss) <- transact db $ do
-            client <- throwMaybe BadResource =<< Client.byName "okuno" -- TODO
+            client <- throwMaybe BadResource =<< Client.byName username
             projects <- Project.byClient client
             let active_projects = filter (\(Stored _ Project{..}) -> action_status == "active") projects
                 action_lists = Nothing : (Just <$> active_projects)
@@ -59,11 +59,11 @@ index_R db req = throwLeftM $ verb (method req) $
                             forM_ action_items $ \item -> do
                                 li_ ! [data_ "action_item" (tshow $ thePk item)] $ ActionItem.full more item
 
-projects_R :: Db -> NeptuneApp
-projects_R db req = throwLeftM $ verb (method req) $
+projects_R :: Db -> Username -> NeptuneApp
+projects_R db username req = throwLeftM $ verb (method req) $
     "GET" >: do
         projects <- transact db $ do
-            client <- throwMaybe BadResource =<< Client.byName "okuno" -- TODO
+            client <- throwMaybe BadResource =<< Client.byName username
             Project.byClient client
         render <- throwLeft $ negotiateMedia [("text/html", html_F)] (acceptMedia $ negotiation req)
         pure $ Response { status = Http.status200, responseBody = Just $ second ($ projects) render }
@@ -76,8 +76,8 @@ projects_R db req = throwLeftM $ verb (method req) $
             ol_ ! [id_ "projects"] $ forM_ projects $ \project -> do
                 li_ $ Project.full project
 
-project_R :: Db -> Maybe (Pk Project) -> NeptuneApp
-project_R db pk req = do
+project_R :: Db -> (Maybe (Pk Project), Username) -> NeptuneApp
+project_R db (pk, username) req = do
     render <- throwLeft $ negotiateMedia [("application/htmlfrag+json", htmlfrag_F)] (acceptMedia $ negotiation req)
     project <- throwLeftM $ verbs (method req)
         [ "GET" >: do
@@ -88,7 +88,7 @@ project_R db pk req = do
             project <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
             case pk of
                 Nothing -> transact db $ do
-                    client <- throwMaybe BadResource =<< Client.byName "okuno" -- TODO
+                    client <- throwMaybe BadResource =<< Client.byName username
                     Project.create client project
                 Just pk -> transact db $ do
                     result <- Project.update (Stored pk project)
@@ -107,11 +107,11 @@ project_R db pk req = do
         , action_status = decodeUtf8 <$> query_queryOne q "action_status"
         }
 
-action_item_R :: Db -> Maybe (Pk ActionItem) -> NeptuneApp
-action_item_R db pk req = do
+action_item_R :: Db -> (Maybe (Pk ActionItem), Username) -> NeptuneApp
+action_item_R db (pk, username) req = do
     today <- utctDay <$> getCurrentTime
     projects <- transact db $ do
-            client <- throwMaybe BadResource =<< Client.byName "okuno" -- TODO
+            client <- throwMaybe BadResource =<< Client.byName username
             Project.byClient client
     render <- throwLeft $ negotiateMedia [("text/html", html_F (today, projects)), ("application/htmlfrag+json", htmlfrag_F (today, projects))] (acceptMedia $ negotiation req)
     item <- throwLeftM $ verbs (method req)
@@ -125,7 +125,7 @@ action_item_R db pk req = do
             item <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
             case pk of
                 Nothing -> transact db $ do
-                    client <- throwMaybe BadResource =<< Client.byName "okuno" -- TODO
+                    client <- throwMaybe BadResource =<< Client.byName username
                     ActionItem.create client item
                 Just pk -> transact db $ do
                     result <- ActionItem.update (Stored pk item)

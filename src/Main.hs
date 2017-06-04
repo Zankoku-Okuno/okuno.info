@@ -15,6 +15,7 @@ import Lucid.Base (TermRaw(..))
 
 import qualified Database.PostgreSQL.Simple as Sql
 import Data.Db
+import Data.Client (Username(..))
 import Data.Pool
 
 import qualified Network.HTTP.Types as Http
@@ -40,7 +41,7 @@ main = do
     Config{..} <- loadConfig
     pool <- createPool (Sql.connectPostgreSQL dbconnect) Sql.close 1 10 10 -- TODO configurable timeout/max connections (and whether to pool at all)
     let db = withResource pool
-        app = toWaiApp $ neptune [static_handler, action_handlers db] haikuErrorResponse
+        app = toWaiApp $ neptune [static_handler, user_handlers db] haikuErrorResponse
     putStrLn $ "Logging to " ++ tshow (fst log)
     initialize db
     putStrLn $ "Running server on port " ++ tshow port ++ " (Ctrl-C to exit)..."
@@ -73,16 +74,20 @@ loadConfig = do
         pure (filepath, logger)
 
 
-action_handlers :: Db -> Route
-action_handlers db ([], q) = Just $ index_R db
-action_handlers db (["action-item"], q) = do
-    let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
-    Just $ action_item_R db pk
-action_handlers db (["project"], q) = do
-    let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
-    Just $ project_R db pk
-action_handlers db (["projects"], q) = Just $ projects_R db
-action_handlers db _ = Nothing
+user_handlers :: Db -> Route
+user_handlers db ((uncons -> Just ('~', Username -> username)) : r, q) = dispatch [action_handlers] (r, q)
+    where
+    action_handlers ([], q) = Just $ dashboard_R db username
+    action_handlers (["action-item"], q) = do
+        let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
+        Just $ action_item_R db (pk, username)
+    action_handlers (["project"], q) = do
+        let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
+        Just $ project_R db (pk, username)
+    action_handlers (["projects"], q) = Just $ projects_R db username
+    action_handlers _ = Nothing
+user_handlers _ _ = Nothing
+
 
 static_handler :: Route
 static_handler (["static", filename], q) = Just $ \req -> do
