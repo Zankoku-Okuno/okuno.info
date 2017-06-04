@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Data.ActionItem
     ( ActionItem(..)
-    , Data.ActionItem.all, byProject
+    , Data.ActionItem.all, dashboard
     , byPk
     , create, update
     ) where
@@ -11,6 +11,7 @@ import Util (fileStr)
 import Data.Db
 
 import Data.Project (Project)
+import Data.Client (Client)
 
 
 data ActionItem = ActionItem
@@ -25,13 +26,15 @@ data ActionItem = ActionItem
     } deriving (Show)
 
 
-create :: ActionItem -> Sql (Stored ActionItem)
-create item@(ActionItem{..}) = do
+create :: Stored Client -> ActionItem -> Sql (Stored ActionItem)
+create client item@(ActionItem{..}) = do
     ids <- query $(fileStr "ActionItem-create.sql")
                     (text, project, deadline, behalf_of, action_type, action_status, weight, timescale)
-    case ids of
+    item <- case ids of
         [Only pk] -> pure $ Stored pk item
         _ -> error "sql insert failed"
+    execute "INSERT INTO action_item__client (action_item_id, client_id) VALUES (?, ?);" (thePk item, thePk client)
+    pure item
 
 update :: Stored ActionItem -> Sql (Maybe (Stored ActionItem))
 update item@(Stored pk ActionItem{..}) = do
@@ -45,9 +48,12 @@ update item@(Stored pk ActionItem{..}) = do
 all :: Sql [Stored ActionItem]
 all = (xformRow <$>) <$> query_ $(fileStr "ActionItem-all.sql")
 
-byProject :: Maybe (Stored Project) -> Sql [Stored ActionItem]
-byProject Nothing = (xformRow <$>) <$> query_ $(fileStr "ActionItem-noProject.sql")
-byProject (Just (thePk -> project_id)) = (xformRow <$>) <$> query $(fileStr "ActionItem-byProject.sql") (Only project_id)
+dashboard :: Stored Client -> Maybe (Stored Project) -> Sql [Stored ActionItem]
+dashboard (thePk -> client_id) project = (xformRow <$>) <$> rows
+    where
+    rows = case project of
+        Nothing -> query $(fileStr "ActionItem-dashboard_noProject.sql") (Only client_id)
+        Just (thePk -> project_id) -> query $(fileStr "ActionItem-dashboard.sql") (client_id, project_id)
 
 byPk :: Pk ActionItem -> Sql (Maybe (Stored ActionItem))
 byPk pk = xform <$> query $(fileStr "ActionItem-byPk.sql") (Only pk)

@@ -1,13 +1,15 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Data.Project
     ( Project(..)
-    , Data.Project.all, byPk
+    , Data.Project.all, byClient
+    , byPk
     , create, update
     ) where
 
 import ClassyPrelude
 
 import Data.Db
+import Data.Client (Client)
 import Util (fileStr)
 
 
@@ -27,13 +29,18 @@ byPk pk = xform <$> query $(fileStr "Project-byPk.sql") (Only pk)
     xform [] = Nothing
     xform [it] = Just $ xformRow it
 
-create :: Project -> Sql (Stored Project)
-create project@(Project{..}) = do
+byClient :: Stored Client -> Sql [Stored Project]
+byClient (Stored pk _) = (xformRow <$>) <$> query $(fileStr "Project-byClient.sql") (Only pk)
+
+create :: Stored Client -> Project -> Sql (Stored Project)
+create client project@(Project{..}) = do
     ids <- query $(fileStr "Project-create.sql")
             (name, mission, action_type, action_status)
-    case ids of
+    project <- case ids of
         [Only pk] -> pure $ Stored pk project
         _ -> error "sql insert failed"
+    execute "INSERT INTO project__client (project_id, client_id) VALUES (?, ?);" (thePk project, thePk client)
+    pure project
 
 update :: Stored Project -> Sql (Maybe (Stored Project))
 update item@(Stored pk Project{..}) = do

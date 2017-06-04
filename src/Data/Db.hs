@@ -6,6 +6,7 @@ module Data.Db (
     , Sql
     , Db, transact
     , query, query_
+    , execute, execute_
     -- re-exports
     , Sql.Only(..)
 ) where
@@ -52,6 +53,16 @@ query_ :: FromRow r => Sql.Query -> Sql [r]
 query_ q = Sql $ do
     conn <- ask
     liftIO $ Sql.query_ conn q
+
+execute :: ToRow q => Sql.Query -> q -> Sql Int64
+execute q args = Sql $ do
+    conn <- ask
+    liftIO $ Sql.execute conn q args
+
+execute_ :: Sql.Query -> Sql Int64
+execute_ q = Sql $ do
+    conn <- ask
+    liftIO $ Sql.execute_ conn q
 
 
 instance FromField (Pk a) where

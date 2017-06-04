@@ -14,7 +14,8 @@ FROM action_item
     JOIN rt.timescale ON (timescale_id = timescale.id)
     JOIN rt.action_status ON (action_status_id = action_status.id)
 WHERE
-    project_id = ? AND
+    action_item.id IN (SELECT action_item_id FROM action_item__client WHERE client_id = ?) AND
+    project_id IS NULL AND
     rt.action_status.description IN ('proposed', 'queued', 'waiting', 'active')
 ORDER BY
     rt.action_status.description = 'active' DESC,
