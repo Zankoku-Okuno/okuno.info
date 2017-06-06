@@ -20,10 +20,10 @@ data Client = Client
 
 
 byName :: Username -> Sql (Maybe (Stored Client))
-byName (theUName -> name) = xform <$> query "SELECT id, name, email FROM client WHERE name = ?;" (Only name)
+byName (theUName -> name) = xform <$> query [pgSQL|SELECT id, name, email FROM client WHERE name = ${name};|]
     where
     xform [] = Nothing
     xform [it] = Just $ xformRow it
 
 
-xformRow (id, Username -> name, email) = Stored id Client{..}
+xformRow (id, Username -> name, email) = Stored (Pk id) Client{..}

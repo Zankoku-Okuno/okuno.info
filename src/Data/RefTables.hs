@@ -12,12 +12,12 @@ import Data.Db
 
 initialize :: Db  -> IO ()
 initialize db = do
-    writeIORef _action_type_ref   =<< _getDescs "SELECT description FROM rt.action_type   ORDER BY ordering ASC;"
-    writeIORef _action_status_ref =<< _getDescs "SELECT description FROM rt.action_status ORDER BY ordering ASC;"
-    writeIORef _weight_ref        =<< _getDescs "SELECT description FROM rt.weight        ORDER BY weight ASC;"
-    writeIORef _timescale_ref     =<< _getDescs "SELECT description FROM rt.timescale     ORDER BY time ASC;"
+    writeIORef _action_type_ref   =<< _getDescs [pgSQL|SELECT description FROM rt.action_type   ORDER BY ordering ASC;|]
+    writeIORef _action_status_ref =<< _getDescs [pgSQL|SELECT description FROM rt.action_status ORDER BY ordering ASC;|]
+    writeIORef _weight_ref        =<< _getDescs [pgSQL|SELECT description FROM rt.weight        ORDER BY weight ASC;|]
+    writeIORef _timescale_ref     =<< _getDescs [pgSQL|SELECT description FROM rt.timescale     ORDER BY time ASC;|]
     where
-    _getDescs q = (fromOnly <$>) <$> transact db (query_ q :: Sql [Only Text])
+    _getDescs q = transact db (query q)
 
 
 action_type, action_status, weight, timescale :: [Text]

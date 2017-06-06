@@ -13,9 +13,8 @@ import qualified Data.ByteString.Lazy as LBS
 import Lucid
 import Lucid.Base (TermRaw(..))
 
-import qualified Database.PostgreSQL.Simple as Sql
+import Database.PostgreSQL.Typed
 import Data.Db
-import Data.Client (Username(..))
 import Data.Pool
 
 import qualified Network.HTTP.Types as Http
@@ -23,6 +22,7 @@ import Network.HTTP.Media
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Handler.Warp as Warp
 
+import System.Environment (getEnv)
 import System.FilePath
 import System.IO (openFile, IOMode(..))
 
@@ -32,6 +32,7 @@ import qualified Network.Wai.Middleware.RequestLogger as Wai
 
 import Resources
 import Data.RefTables (initialize)
+import Data.Client (Username(..))
 
 
 
@@ -39,7 +40,7 @@ import Data.RefTables (initialize)
 main :: IO ()
 main = do
     Config{..} <- loadConfig
-    pool <- createPool (Sql.connectPostgreSQL dbconnect) Sql.close 1 10 10 -- TODO configurable timeout/max connections (and whether to pool at all)
+    pool <- createPool (pgConnect dbconnect) pgDisconnect 1 10 10 -- TODO configurable timeout/max connections (and whether to pool at all)
     let db = withResource pool
         app = toWaiApp $ neptune [static_handler, user_handlers db] haikuErrorResponse
     putStrLn $ "Logging to " ++ tshow (fst log)
@@ -50,7 +51,7 @@ main = do
 
 data Config = Config
     { port :: Int
-    , dbconnect :: BS.ByteString
+    , dbconnect :: PGDatabase
     , log :: (FilePath, Wai.Middleware)
     }
 loadConfig :: IO Config
@@ -61,10 +62,12 @@ loadConfig = do
         [filepath] -> pure $ unpack filepath
         _ -> error "usage: okuno-info [config-dir]"
     port <- read . unpack . decodeUtf8 <$> readFile (config_dir </> "port.conf")
-    dbconnect <- BS.readFile (config_dir </> "dbconnect.conf")
+    user <- fromString <$> getEnv "USER"
+    dbconnect <- parseDb user <$> BS.readFile (config_dir </> "dbconnect.conf")
     log <- parseLog =<< unpack . decodeUtf8 <$> readFile (config_dir </> "logging.conf")
     pure $ Config {..}
     where
+    parseDb user contents = defaultPGDatabase { pgDBName = contents, pgDBUser = user }
     parseLog "" = pure $ ("<stdout>", Wai.logStdoutDev)
     parseLog filepath = do
         handle <- openFile filepath AppendMode

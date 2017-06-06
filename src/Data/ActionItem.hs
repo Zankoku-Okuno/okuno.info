@@ -26,41 +26,185 @@ data ActionItem = ActionItem
     } deriving (Show)
 
 
-create :: Stored Client -> ActionItem -> Sql (Stored ActionItem)
-create client item@(ActionItem{..}) = do
-    ids <- query $(fileStr "ActionItem-create.sql")
-                    (text, project, deadline, behalf_of, action_type, action_status, weight, timescale)
-    item <- case ids of
-        [Only pk] -> pure $ Stored pk item
-        _ -> error "sql insert failed"
-    execute "INSERT INTO action_item__client (action_item_id, client_id) VALUES (?, ?);" (thePk item, thePk client)
-    pure item
-
-update :: Stored ActionItem -> Sql (Maybe (Stored ActionItem))
-update item@(Stored pk ActionItem{..}) = do
-    ids <- query $(fileStr "ActionItem-update.sql")
-                    (text, project, action_type, action_status, weight, timescale, deadline, behalf_of, pk)
-    pure $ case ids of
-        [] -> Nothing
-        [Only (pk :: Pk ActionItem)] -> Just item
-        _ -> error "sql insert failed"
-
 all :: Sql [Stored ActionItem]
-all = (xformRow <$>) <$> query_ $(fileStr "ActionItem-all.sql")
+all = (xformRow <$>) <$> query [pgSQL|
+    SELECT
+        action_item.id,
+        text,
+        project_id,
+        rt.action_type.description,
+        rt.action_status.description,
+        rt.weight.description,
+        rt.timescale.description,
+        deadline,
+        behalf_of
+    FROM action_item
+        JOIN rt.action_type ON (action_type_id = action_type.id)
+        JOIN rt.weight ON (weight_id = weight.id)
+        JOIN rt.timescale ON (timescale_id = timescale.id)
+        JOIN rt.action_status ON (action_status_id = action_status.id)
+    WHERE
+        rt.action_status.description IN ('proposed', 'queued', 'waiting', 'active')
+    ORDER BY
+        rt.action_status.description = 'active' DESC,
+        CASE
+            WHEN (deadline - time) :: date <= current_date THEN TRUE
+            ELSE FALSE
+        END DESC,
+        rt.action_status.description = 'waiting' DESC,
+        rt.action_status.description = 'queued' DESC,
+        EXTRACT(EPOCH FROM time) / (24*3600) / weight ::float ASC,
+        last_accessed_on DESC;|]
 
 dashboard :: Stored Client -> Maybe (Stored Project) -> Sql [Stored ActionItem]
 dashboard (thePk -> client_id) project = (xformRow <$>) <$> rows
     where
     rows = case project of
-        Nothing -> query $(fileStr "ActionItem-dashboard_noProject.sql") (Only client_id)
-        Just (thePk -> project_id) -> query $(fileStr "ActionItem-dashboard.sql") (client_id, project_id)
+        Nothing -> query [pgSQL|
+            SELECT
+                action_item.id,
+                text,
+                project_id,
+                rt.action_type.description,
+                rt.action_status.description,
+                rt.weight.description,
+                rt.timescale.description,
+                deadline,
+                behalf_of
+            FROM action_item
+                JOIN rt.action_type ON (action_type_id = action_type.id)
+                JOIN rt.weight ON (weight_id = weight.id)
+                JOIN rt.timescale ON (timescale_id = timescale.id)
+                JOIN rt.action_status ON (action_status_id = action_status.id)
+            WHERE
+                action_item.id IN (SELECT action_item_id FROM action_item__client WHERE client_id = ${unPk client_id}) AND
+                project_id IS NULL AND
+                rt.action_status.description IN ('proposed', 'queued', 'waiting', 'active')
+            ORDER BY
+                rt.action_status.description = 'active' DESC,
+                CASE
+                    WHEN (deadline - time) :: date <= current_date THEN TRUE
+                    ELSE FALSE
+                END DESC,
+                rt.action_status.description = 'waiting' DESC,
+                rt.action_status.description = 'queued' DESC,
+                EXTRACT(EPOCH FROM time) / (24*3600) / weight ::float ASC,
+                last_accessed_on DESC;|]
+        Just (thePk -> project_id) -> query [pgSQL|
+            SELECT
+                action_item.id,
+                text,
+                project_id,
+                rt.action_type.description,
+                rt.action_status.description,
+                rt.weight.description,
+                rt.timescale.description,
+                deadline,
+                behalf_of
+            FROM action_item
+                JOIN rt.action_type ON (action_type_id = action_type.id)
+                JOIN rt.weight ON (weight_id = weight.id)
+                JOIN rt.timescale ON (timescale_id = timescale.id)
+                JOIN rt.action_status ON (action_status_id = action_status.id)
+            WHERE
+                action_item.id IN (SELECT action_item_id FROM action_item__client WHERE client_id = ${unPk client_id}) AND
+                project_id = ${unPk project_id} AND
+                rt.action_status.description IN ('proposed', 'queued', 'waiting', 'active')
+            ORDER BY
+                rt.action_status.description = 'active' DESC,
+                CASE
+                    WHEN (deadline - time) :: date <= current_date THEN TRUE
+                    ELSE FALSE
+                END DESC,
+                rt.action_status.description = 'waiting' DESC,
+                rt.action_status.description = 'queued' DESC,
+                EXTRACT(EPOCH FROM time) / (24*3600) / weight ::float ASC,
+                last_accessed_on DESC;|]
 
 byPk :: Pk ActionItem -> Sql (Maybe (Stored ActionItem))
-byPk pk = xform <$> query $(fileStr "ActionItem-byPk.sql") (Only pk)
+byPk pk = xform <$> query [pgSQL|
+    SELECT
+        action_item.id,
+        text,
+        project_id,
+        rt.action_type.description,
+        rt.action_status.description,
+        rt.weight.description,
+        rt.timescale.description,
+        deadline,
+        behalf_of
+    FROM action_item
+        JOIN rt.action_type ON (action_type_id = action_type.id)
+        JOIN rt.weight ON (weight_id = weight.id)
+        JOIN rt.timescale ON (timescale_id = timescale.id)
+        JOIN rt.action_status ON (action_status_id = action_status.id)
+    WHERE
+        action_item.id = ${unPk pk};|]
     where
     xform [] = Nothing
     xform [it] = Just $ xformRow it
 
+create :: Stored Client -> ActionItem -> Sql (Stored ActionItem)
+create client item@(ActionItem{..}) = do
+    ids <- query [pgSQL|
+        -- FIXME add defaults in the database for the timing stuff
+        INSERT INTO action_item (
+            text,
+            project_id,
+            action_type_id,
+            action_status_id,
+            weight_id,
+            timescale_id,
+            deadline,
+            behalf_of
+        ) (
+            SELECT
+                ${text},
+                ${unPk <$> project},
+                rt.action_type.id,
+                rt.action_status.id,
+                rt.weight.id,
+                rt.timescale.id,
+                ${deadline},
+                ${behalf_of}
+            FROM rt.action_type, rt.weight, rt.timescale, rt.action_status
+            WHERE
+                rt.action_type.description = ${action_type} AND
+                rt.action_status.description = ${action_status} AND
+                rt.weight.description = ${weight} AND
+                rt.timescale.description = ${timescale}
+        )
+        RETURNING id;|]
+    item <- case ids of
+        [pk] -> pure $ Stored (Pk pk) item
+        _ -> error "sql insert failed"
+    execute [pgSQL|
+        INSERT INTO action_item__client (action_item_id, client_id)
+        VALUES (${unPk $ thePk item}, ${unPk $ thePk client});|]
+    pure item
 
-xformRow (id, text, project, action_type, action_status, weight, timescale, deadline, behalf_of) =
-    Stored id ActionItem{..}
+update :: Stored ActionItem -> Sql (Maybe (Stored ActionItem))
+update item@(Stored pk ActionItem{..}) = do
+    ids <- query [pgSQL|
+        UPDATE action_item SET
+            text = ${text},
+            project_id = ${unPk <$> project},
+            action_type_id = (SELECT id from rt.action_type WHERE description = ${action_type}),
+            action_status_id = (SELECT id from rt.action_status WHERE description = ${action_status}),
+            weight_id = (SELECT id from rt.weight WHERE description = ${weight}),
+            timescale_id = (SELECT id from rt.timescale WHERE description = ${timescale}),
+            deadline = ${deadline},
+            behalf_of = ${behalf_of},
+            last_accessed_on = current_date,
+            last_update_on = current_date
+        WHERE
+            action_item.id = ${unPk pk}
+        RETURNING id;|]
+    pure $ case ids of
+        [] -> Nothing
+        [pk :: Int32] -> Just item
+        _ -> error "sql insert failed"
+
+
+xformRow (id, text, (Pk <$>) -> project, action_type, action_status, weight, timescale, deadline, behalf_of) =
+    Stored (Pk id) ActionItem{..}
