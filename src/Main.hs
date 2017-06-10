@@ -14,6 +14,7 @@ import Lucid
 import Lucid.Base (TermRaw(..))
 
 import Database.PostgreSQL.Typed
+import Network (PortID(UnixSocket))
 import Data.Db
 import Data.Pool
 
@@ -63,11 +64,13 @@ loadConfig = do
         _ -> error "usage: okuno-info [config-dir]"
     port <- read . unpack . decodeUtf8 <$> readFile (config_dir </> "port.conf")
     user <- fromString <$> getEnv "USER"
-    dbconnect <- parseDb user <$> BS.readFile (config_dir </> "dbconnect.conf")
+    dbname <- fromString <$> getEnv "TPG_DB"
+    dbsock <- UnixSocket <$> getEnv "TPG_SOCK"
+    let dbconnect = parseDb user dbname dbsock
     log <- parseLog =<< unpack . decodeUtf8 <$> readFile (config_dir </> "logging.conf")
     pure $ Config {..}
     where
-    parseDb user contents = defaultPGDatabase { pgDBName = contents, pgDBUser = user }
+    parseDb user dbname socket = defaultPGDatabase { pgDBName = dbname, pgDBUser = user, pgDBPort = socket }
     parseLog "" = pure $ ("<stdout>", Wai.logStdoutDev)
     parseLog filepath = do
         handle <- openFile filepath AppendMode

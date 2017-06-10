@@ -44,6 +44,7 @@ executable okuno-info
     http-types >=0.9 && <1,
     lucid ==2.9.*,
     mtl ==2.*,
+    network ==2.*,
     neptune ==0.3.0,
     neptune-wai ==0.3.0,
     postgresql-simple ==0.5.*,
