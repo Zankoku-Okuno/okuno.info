@@ -56,9 +56,12 @@ dashboard_R db username req = throwLeftM $ verb (method req) $
             div_ ! [ style_ "display: flex; justify-content: space-around; "] $ do
                 forM_ action_itemss $ \action_items -> do
                     div_ $ do
-                        ol_ ! [id_ "action_items"] $ -- FIXME id_ is inappropriate
+                        let projname = Nothing -- TODO have the project for the action_items available to render stuff
+                        ol_ ! [class_ "action_items ", data_ "project" (fromMaybe "" projname)] $ -- FIXME id_ is inappropriate
                             forM_ action_items $ \item -> do
-                                li_ ! [data_ "action_item" (tshow $ thePk item)] $ ActionItem.full more item
+                                li_ ! [ class_ "action_item "
+                                      , data_ "pk" (tshow $ thePk item)
+                                      ] $ ActionItem.full more item
 
 projects_R :: Db -> Username -> NeptuneApp
 projects_R db username req = throwLeftM $ verb (method req) $
@@ -75,8 +78,10 @@ projects_R db username req = throwLeftM $ verb (method req) $
         defaultHead
         body_ $ do
             Project.form client def
-            ol_ ! [id_ "projects"] $ forM_ projects $ \project -> do
-                li_ $ Project.full client project
+            ol_ ! [class_ "projects "] $ forM_ projects $ \project -> do
+                li_ ! [ class_ "project "
+                      , data_ "pk" (tshow $ thePk project)
+                      ] $ Project.full client project
 
 project_R :: Db -> (Maybe (Pk Project), Username) -> NeptuneApp
 project_R db (pk, username) req = do

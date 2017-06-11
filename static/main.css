@@ -2,30 +2,33 @@
     display: none;
 }
 
-*[data-action_item] {
+.action_item[data-pk],
+.project[data-pk] {
     max-width: 30em;
 }
-*[data-action_item] > select[data-tabs] {
+.action_item[data-pk] > select[data-tabs],
+.project[data-pk] > select[data-tabs] {
     float: right;
 }
 
 
-.action_item_meta {
+.meta span {
     border-radius: 0.4em;
+    font-size: 80%;
 }
 
-.action_item_meta[data-time_status='overdue'] {
+.meta span[data-time_status='overdue'] {
     border: thin red solid;
 }
-.action_item_meta[data-time_status='today'] {
+.meta span[data-time_status='today'] {
     border: thin grey solid;
 }
 
-.action_item_meta[data-action_status='active'] {
+.meta span[data-action_status='active'] {
     border: thin green solid;
 }
-.action_item_meta[data-action_status='waiting'] {
+.meta span[data-action_status='waiting'] {
     color: grey;
 }
-.action_item_meta[data-action_status='queued'] {
+.meta span[data-action_status='queued'] {
 }

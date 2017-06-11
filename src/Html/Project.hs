@@ -17,7 +17,7 @@ import Html.Client (userUrl)
 
 full :: Monad m => Stored Client -> Stored Project -> HtmlT m ()
 full client project@(Stored pk Project{..}) = do
-    let tabset = concat ["project-", tshow pk]
+    let tabset = concat ["project_", tshow pk]
     select_ [data_ "tabs" tabset] $ do
         option_ ! [value_ "view", selected_ "true"] $ "View"
         option_ ! [value_ "edit"] $ "Edit"
@@ -25,11 +25,11 @@ full client project@(Stored pk Project{..}) = do
            , data_ "tab" "view"
            ] $ do
         p_ $ toHtml name
-        p_ $ toHtml mission
-        div_ $ do
-            small_ ! [class_ "project_meta ", data_ "action_status" action_status] $ toHtml action_status
+        p_ ! [class_ "mission "] $ toHtml mission
+        div_ ! [class_ "meta "]$ do
+            span_ ! [data_ "action_status" action_status] $ toHtml action_status
             " "
-            small_ ! [class_ "project_meta ", data_ "action_type" action_type] $ toHtml action_type
+            span_ ! [data_ "action_type" action_type] $ toHtml action_type
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
            ] $ do
