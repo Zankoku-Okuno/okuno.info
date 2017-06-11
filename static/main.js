@@ -45,7 +45,7 @@ function init_put_forms(dom) {
                     id: response.body.id,
                     fragment: (function () {
                             var tmp = document.createElement('template')
-                            tmp.innerHTML = response.body.action_item
+                            tmp.innerHTML = response.body.htmlfrag
                             return tmp.content
                         })()
                 }
@@ -92,11 +92,35 @@ function init_action_item_forms(dom) {
     })
 }
 
+function init_project_forms(dom) {
+    // adjust the dom after successful action_item persistence
+    dom.querySelectorAll("form.project").forEach(function (form) {
+        form.addEventListener('create', function (event) {
+            var li = document.createElement('li')
+            li.classList.add("project")
+            li.dataset['pk'] = event.detail.id
+            li.append(event.detail.fragment)
+            document.querySelector(".projects").prepend(li)
+            patch_dom(li)
+            form.reset()
+        })
+
+        form.addEventListener('update', function (event) {
+            document.querySelectorAll(".project[data-pk='"+event.detail.id+"']").forEach(function (item) {
+                item.innerHTML = ''
+                item.append(event.detail.fragment)
+                patch_dom(item)
+            })
+        })
+    })
+}
+
 function patch_dom(dom) {
     init_tabs(dom)
     dom.querySelectorAll(".action_item[data-pk]").forEach(init_cancel_button)
     init_put_forms(dom)
     init_action_item_forms(dom)
+    init_project_forms(dom)
 
     document.querySelectorAll(".action_item[data-pk]").forEach(function (item) {
         var tabset = "action_item_"+item.dataset["action_item"]

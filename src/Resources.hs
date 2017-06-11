@@ -110,7 +110,7 @@ project_R db (pk, username) req = do
     where
     htmlfrag_F client project =
         let html = renderText $ Project.full client project
-            json = object ["id" .= thePk project, "project" .= html]
+            json = object ["id" .= thePk project, "htmlfrag" .= html]
         in encode json
     getForm q = Project.Form
         { name = decodeUtf8 <$> query_queryOne q "name"
@@ -154,7 +154,7 @@ action_item_R db (pk, username) req = do
         body_ $ ActionItem.full more item
     htmlfrag_F more item = 
         let html = renderText $ ActionItem.full more item
-            json = object ["id" .= thePk item, "action_item" .= html]
+            json = object ["id" .= thePk item, "htmlfrag" .= html]
         in encode json
     getForm q = ActionItem.Form
         { text = decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
