@@ -25,8 +25,7 @@ full (today, client, projects) item@(Stored pk ActionItem{..}) = do
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "view"
            ] $ do
-        p_ $ do
-            toHtml text
+        div_ ! [class_ "markdown "] $ toHtml text
         div_ ! [class_ "meta "] $ do
             div_ $ do
                 maybeM_ project $ \project_id -> forM_ projects $ \project -> do

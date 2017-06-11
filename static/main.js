@@ -5,6 +5,16 @@ document.addEventListener("DOMContentLoaded", function () {
     patch_dom(document)
 })
 
+function init_textarea(dom) {
+    dom.querySelectorAll("textarea").forEach(autoResize)
+}
+
+function init_markdown(dom) {
+    dom.querySelectorAll(".markdown").forEach(function (md) {
+        md.innerHTML = markdown.toHTML(md.innerHTML)
+    })
+}
+
 function init_tabs(dom) {
     dom.querySelectorAll("select[data-tabs]").forEach(function (controller) {
         function update_tabs() {
@@ -116,6 +126,8 @@ function init_project_forms(dom) {
 }
 
 function patch_dom(dom) {
+    init_textarea(dom)
+    init_markdown(dom)
     init_tabs(dom)
     dom.querySelectorAll(".action_item[data-pk]").forEach(init_cancel_button)
     init_put_forms(dom)

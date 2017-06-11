@@ -24,7 +24,7 @@ full client project@(Stored pk Project{..}) = do
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "view"
            ] $ do
-        p_ $ toHtml name
+        div_ ! [class_ "markdown "] $ toHtml name
         p_ ! [class_ "mission "] $ toHtml mission
         div_ ! [class_ "meta "]$ do
             span_ ! [data_ "action_status" action_status] $ toHtml action_status

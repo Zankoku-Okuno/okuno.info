@@ -41,16 +41,19 @@ defaultHead = head_ $ do
     title_ "残酷 奧泉 ꙮ‽"
 
     js_ "/static/classList.js"
+    js_ "/static/autoresize-textarea.js"
 
     js_ "/static/better-dom.js"
     js_ "/static/better-i18n-plugin.js"
     js_ "/static/better-time-element.js"
     js_ "/static/better-dateinput-polyfill.js"
 
-    js_ "http://rsvpjs-builds.s3.amazonaws.com/rsvp-latest.js"
+    js_ "/static/rsvp-latest.min.js"
     js_ "/static/lodash.core.js"
     js_ "/static/URI.js"
     js_ "/static/http.js"
+
+    js_ "/static/markdown.min.js"
     
     js_ "/static/main.js"
     css_ "/static/main.css"
