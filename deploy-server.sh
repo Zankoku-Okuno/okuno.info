@@ -1,8 +1,9 @@
-#! /bin/sh
+#! /bin/bash
 set -e
 set -x
 
 cd /var/lib/okuno-info
+source config/server/env.sh
 
 # stop server
 sudo service okuno-info stop
@@ -14,9 +15,14 @@ mv okuno-info sql static config bak/
 
 # move updated files into place
 mv deploy/* .
+
+# update database
+for UPDATE in `ls sql/*-*.sql` ; do
+    VERSION=`echo ${UPDATE%%-*.sql} | sed 's/^sql\/0*//'`
+    if ((`psql -qtA -d hstest -c 'SELECT version FROM version;'` < $VERSION)); then
+        psql -d $TPG_DB < $UPDATE
+    fi
+done
+
 # start server
 sudo service okuno-info start
-
-
-# TODO query db version, run any sql scripts needed
-echo 'DO NOT FORGET TO RUN SQL!'
