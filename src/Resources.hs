@@ -28,6 +28,7 @@ import qualified Html.Project as Project
 import qualified Form.Project as Project
 import Data.Client (Client(..), Username(..))
 import qualified Data.Client as Client
+import qualified Html.Client as Client
 import Html.Client (userUrl)
 
 
@@ -49,9 +50,10 @@ dashboard_R db username req = throwLeftM $ verb (method req) $
     html_F more@(_, client, projects) action_itemss = renderBS $ doctypehtml_ $ do
         defaultHead
         body_ $ do
-            div_ ! [style_ "display: flex; "] $ do
-                ActionItem.form (client, projects) def
-                a_ ! [href_ $ userUrl client "/projects"] $ "All Projects"
+            Client.navigation client
+            -- div_ ! [style_ "display: flex; "] $ do
+            ActionItem.form (client, projects) def
+                -- a_ ! [href_ $ userUrl client "/projects"] $ "All Projects"
             hr_ []
             div_ ! [ style_ "display: flex; justify-content: space-around; "] $ do
                 forM_ action_itemss $ \action_items -> do
@@ -76,6 +78,7 @@ projects_R db username req = throwLeftM $ verb (method req) $
     html_F :: Stored Client -> [Stored Project] -> LBS.ByteString
     html_F client projects = renderBS $ doctypehtml_ $ do
         defaultHead
+        Client.navigation client
         body_ $ do
             Project.form client def
             ol_ ! [class_ "projects "] $ forM_ projects $ \project -> do

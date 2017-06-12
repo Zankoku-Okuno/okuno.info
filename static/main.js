@@ -9,6 +9,15 @@ function init_textarea(dom) {
     dom.querySelectorAll("textarea").forEach(autoResize)
 }
 
+function init_nav(dom) {
+    dom.querySelectorAll(".nav ul > li a").forEach(function (link) {
+        if (link.href === document.location.href) {
+            link.dataset.old_href = link.href
+            link.removeAttribute('href')
+        }
+    })
+}
+
 function init_markdown(dom) {
     dom.querySelectorAll(".markdown").forEach(function (md) {
         md.innerHTML = markdown.toHTML(md.innerHTML)
@@ -127,6 +136,7 @@ function init_project_forms(dom) {
 
 function patch_dom(dom) {
     init_textarea(dom)
+    init_nav(dom)
     init_markdown(dom)
     init_tabs(dom)
     dom.querySelectorAll(".action_item[data-pk]").forEach(init_cancel_button)
