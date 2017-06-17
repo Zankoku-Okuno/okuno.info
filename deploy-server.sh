@@ -19,10 +19,11 @@ mv deploy/* .
 # update database
 for UPDATE in `ls sql/*-*.sql` ; do
     VERSION=`echo ${UPDATE%%-*.sql} | sed 's/^sql\/0*//'`
-    if ((`psql -qtA -d hstest -c 'SELECT version FROM version;'` < $VERSION)); then
+    if ((`psql -qtA -d $TPG_DB -c 'SELECT version FROM version;'` < $VERSION)); then
         psql -d $TPG_DB < $UPDATE
     fi
 done
 
 # start server
 sudo service okuno-info start
+service okuno-info status
