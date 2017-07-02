@@ -28,8 +28,6 @@ full client project@(Stored pk Project{..}) = do
         p_ ! [class_ "mission "] $ toHtml mission
         div_ ! [class_ "meta "]$ do
             span_ ! [data_ "action_status" action_status] $ toHtml action_status
-            " "
-            span_ ! [data_ "action_type" action_type] $ toHtml action_type
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
            ] $ do
@@ -50,7 +48,6 @@ form client (pk, Project.Form{..}) = do
             maybeM_ mission toHtml
 
         div_ $ do
-            dropdown_ (maybe (Left "select type") Right action_type) RT.action_type ! [name_ "action_type", required_ "true"]
             dropdown_ (maybe (Right "queued") Right action_status) RT.action_status ! [name_ "action_status", required_ "true"]
 
         div_ $ do

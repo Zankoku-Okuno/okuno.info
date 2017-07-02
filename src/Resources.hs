@@ -118,7 +118,6 @@ project_R db (pk, username) req = do
     getForm q = Project.Form
         { name = decodeUtf8 <$> query_queryOne q "name"
         , mission = decodeUtf8 <$> query_queryOne q "mission"
-        , action_type = decodeUtf8 <$> query_queryOne q "action_type"
         , action_status = decodeUtf8 <$> query_queryOne q "action_status"
         }
 
@@ -145,7 +144,7 @@ action_item_R db (pk, username) req = do
             case pk of
                 Nothing -> transact db $ do
                     client <- throwMaybe BadResource =<< Client.byName username
-                    ActionItem.create client item
+                    ActionItem.create client item Nothing -- TODO set project
                 Just pk -> transact db $ do
                     result <- ActionItem.update (Stored pk item)
                     throwMaybe BadResource result
@@ -161,11 +160,8 @@ action_item_R db (pk, username) req = do
         in encode json
     getForm q = ActionItem.Form
         { text = decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
-        , project = Just $ Pk . read . unpack . decodeUtf8 <$> query_queryOne q "project"
-        , action_type = decodeUtf8 <$> query_queryOne q "action_type"
         , action_status = decodeUtf8 <$> query_queryOne q "action_status"
         , weight = decodeUtf8 <$> query_queryOne q "weight"
         , timescale = decodeUtf8 <$> query_queryOne q "timescale"
         , deadline = readTime =<< unpack . decodeUtf8 <$> query_queryOne q "deadline"
-        , behalf_of = Just $ decodeUtf8 <$> query_queryOne q "behalf_of"
         }

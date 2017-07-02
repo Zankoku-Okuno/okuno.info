@@ -27,17 +27,7 @@ full (today, client, projects) item@(Stored pk ActionItem{..}) = do
            ] $ do
         div_ ! [class_ "markdown "] $ toHtml text
         div_ ! [class_ "meta "] $ do
-            div_ $ do
-                maybeM_ project $ \project_id -> forM_ projects $ \project -> do
-                    when (thePk project == project_id) $ do
-                        let Project{..} = thePayload project
-                        span_ ! [data_ "project" name] $ do
-                            toHtml name
-                            maybeM_ behalf_of $ const ", "
-                maybeM_ behalf_of $ \behalf_of -> do
-                    span_ ! [class_ "behalf_of ", data_ "behalf_of" behalf_of] $ do
-                        "for "
-                        toHtml behalf_of
+            -- TODO display project & tags
             maybeM_ deadline $ \deadline -> do
                 let time_status = if | deadline < today -> "overdue"
                                      | deadline == today -> "today"
@@ -51,8 +41,6 @@ full (today, client, projects) item@(Stored pk ActionItem{..}) = do
             span_ ! [data_ "weight" weight] $ toHtml weight
             " "
             span_ ! [data_ "action_status" action_status] $ toHtml action_status
-            " "
-            span_ ! [data_ "action_type" action_type] $ toHtml action_type
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
            ] $ do
@@ -72,22 +60,17 @@ form (client, projects) (pk, ActionItem.Form{..}) = do
         div_ $ textarea_ ! [name_ "text", required_ "true", autofocus_, placeholder_ "describe action item"] $
             maybeM_ text toHtml
         div_ [class_ "meta "] $ do
-            select_ ! [name_ "project"] $ do
-                option_ ! [value_ ""] ! maybe [] (const [selected_ "true"]) (join project) $ "unassigned"
-                forM_ projects $ \(Stored pk Project{..}) -> do
-                    option_ ! [value_ $ tshow pk] ! (if (join project) == (Just pk) then [selected_ "true"] else []) $ toHtml name
+            -- TODO select project
+            -- select_ ! [name_ "project"] $ do
+            --     option_ ! [value_ ""] ! maybe [] (const [selected_ "true"]) (join project) $ "unassigned"
+            --     forM_ projects $ \(Stored pk Project{..}) -> do
+            --         option_ ! [value_ $ tshow pk] ! (if (join project) == (Just pk) then [selected_ "true"] else []) $ toHtml name
             div_ $ do
-                dropdown_ (maybe (Left "select type") Right action_type) RT.action_type ! [name_ "action_type", required_ "true"]
                 dropdown_ (maybe (Left "select timescale") Right timescale) RT.timescale ! [name_ "timescale", required_ "true"]
                 dropdown_ (maybe (Left "select weight") Right weight) RT.weight ! [name_ "weight", required_ "true"]
                 dropdown_ (maybe (Right "queued") Right action_status) RT.action_status ! [name_ "action_status", required_ "true"]
             div_ $ input_ [type_ "date", name_ "deadline", placeholder_ "due date"]
                     ! maybe [] ((:[]) . value_ . pack . showTime) deadline
-            div_ $ input_ [type_ "text", name_ "behalf_of", placeholder_ "on behalf of"]
-                    ! case behalf_of of
-                        Nothing -> []
-                        Just Nothing -> [value_ ""]
-                        Just (Just behalf_of) -> [value_ behalf_of]
         div_ $ do
             button_ ! [type_ "submit"] $ maybe "Create" (const "Save") pk
             button_ ! [type_ "reset"] $ "Cancel"
