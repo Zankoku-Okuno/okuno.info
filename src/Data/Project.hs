@@ -10,7 +10,6 @@ import ClassyPrelude
 
 import Data.Db
 import Data.Client (Client)
-import Util (fileStr)
 
 
 data Project = Project

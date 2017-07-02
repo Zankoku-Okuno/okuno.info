@@ -23,13 +23,16 @@ executable okuno-info
     Data.Client,
     Data.Project,
     Data.RefTables,
+    Data.Tag,
     Form,
     Form.ActionItem,
     Form.Project,
+    Form.Tag,
     Html,
     Html.ActionItem,
     Html.Client,
     Html.Project,
+    Html.Tag,
     Resources,
     Util
   build-depends:

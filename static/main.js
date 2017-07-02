@@ -111,21 +111,20 @@ function init_action_item_forms(dom) {
     })
 }
 
-function init_project_forms(dom) {
-    // adjust the dom after successful action_item persistence
-    dom.querySelectorAll("form.project").forEach(function (form) {
+function init_item_forms(dom, options) {
+    dom.querySelectorAll("form."+options.item_class).forEach(function (form) {
         form.addEventListener('create', function (event) {
             var li = document.createElement('li')
-            li.classList.add("project")
+            li.classList.add(options.item_class)
             li.dataset['pk'] = event.detail.id
             li.append(event.detail.fragment)
-            document.querySelector(".projects").prepend(li)
+            document.querySelector("."+options.group_class).prepend(li)
             patch_dom(li)
             form.reset()
         })
 
         form.addEventListener('update', function (event) {
-            document.querySelectorAll(".project[data-pk='"+event.detail.id+"']").forEach(function (item) {
+            document.querySelectorAll("."+options.item_class+"[data-pk='"+event.detail.id+"']").forEach(function (item) {
                 item.innerHTML = ''
                 item.append(event.detail.fragment)
                 patch_dom(item)
@@ -142,7 +141,14 @@ function patch_dom(dom) {
     dom.querySelectorAll(".action_item[data-pk]").forEach(init_cancel_button)
     init_put_forms(dom)
     init_action_item_forms(dom)
-    init_project_forms(dom)
+    init_item_forms(dom, {
+        item_class: "project",
+        group_class: "projects",
+    })
+    init_item_forms(dom, {
+        item_class: "tag",
+        group_class: "tags",
+    })
 
     document.querySelectorAll(".action_item[data-pk]").forEach(function (item) {
         var tabset = "action_item_"+item.dataset["action_item"]

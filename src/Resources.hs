@@ -22,10 +22,15 @@ import Data.ActionItem (ActionItem(..))
 import qualified Data.ActionItem as ActionItem
 import qualified Html.ActionItem as ActionItem
 import qualified Form.ActionItem as ActionItem
+import qualified Data.Aware.ActionItem as ActionItem
 import Data.Project (Project(..))
 import qualified Data.Project as Project
 import qualified Html.Project as Project
 import qualified Form.Project as Project
+import Data.Tag (Tag(..))
+import qualified Data.Tag as Tag
+import qualified Html.Tag as Tag
+import qualified Form.Tag as Tag
 import Data.Client (Client(..), Username(..))
 import qualified Data.Client as Client
 import qualified Html.Client as Client
@@ -65,6 +70,10 @@ dashboard_R db username req = throwLeftM $ verb (method req) $
                                       , data_ "pk" (tshow $ thePk item)
                                       ] $ ActionItem.full more item
 
+
+
+
+
 projects_R :: Db -> Username -> NeptuneApp
 projects_R db username req = throwLeftM $ verb (method req) $
     "GET" >: do
@@ -78,8 +87,8 @@ projects_R db username req = throwLeftM $ verb (method req) $
     html_F :: Stored Client -> [Stored Project] -> LBS.ByteString
     html_F client projects = renderBS $ doctypehtml_ $ do
         defaultHead
-        Client.navigation client
         body_ $ do
+            Client.navigation client
             Project.form client def
             ol_ ! [class_ "projects "] $ forM_ projects $ \project -> do
                 li_ ! [ class_ "project "
@@ -96,17 +105,17 @@ project_R db (pk, username) req = do
                 project <- throwMaybe BadResource =<< Project.byPk pk
                 pure (client, project)
         , "PUT" >: do
-            let form = getForm (snd $ resourceId req) :: Project.Form
-            project <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
-            case pk of
-                Nothing -> transact db $ do
-                    client <- throwMaybe BadResource =<< Client.byName username
-                    project <- Project.create client project
-                    pure (client, project)
-                Just pk -> transact db $ do
-                    client <- throwMaybe BadResource =<< Client.byName username
-                    project <- throwMaybe BadResource =<< Project.update (Stored pk project)
-                    pure (client, project)
+            transact db $ do
+                client <- throwMaybe BadResource =<< Client.byName username
+                let form = getForm client (snd $ resourceId req) :: Project.Form
+                project <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
+                case pk of
+                    Nothing -> do
+                        project <- Project.create client project
+                        pure (client, project)
+                    Just pk -> do
+                        project <- throwMaybe BadResource =<< Project.update (Stored pk project)
+                        pure (client, project)
         ]
     render <- throwLeft $ negotiateMedia [("application/htmlfrag+json", htmlfrag_F client)] (acceptMedia $ negotiation req)
     pure $ Response { status = Http.status200, responseBody = Just $ second ($ project) render } -- FIXME status201 where appropriate
@@ -115,11 +124,67 @@ project_R db (pk, username) req = do
         let html = renderText $ Project.full client project
             json = object ["id" .= thePk project, "htmlfrag" .= html]
         in encode json
-    getForm q = Project.Form
+    getForm client q = Project.Form
         { name = decodeUtf8 <$> query_queryOne q "name"
         , mission = decodeUtf8 <$> query_queryOne q "mission"
         , action_status = decodeUtf8 <$> query_queryOne q "action_status"
         }
+
+
+
+
+
+tags_R :: Db -> Username -> NeptuneApp
+tags_R db username req = throwLeftM $ verb (method req) $
+    "GET" >: do
+        (client, tags) <- transact db $ do
+            client <- throwMaybe BadResource =<< Client.byName username
+            tags <- Tag.byClient client
+            pure (client, tags)
+        render <- throwLeft $ negotiateMedia [("text/html", html_F client)] (acceptMedia $ negotiation req)
+        pure $ Response { status = Http.status200, responseBody = Just $ second ($ tags) render }
+    where
+    html_F :: Stored Client -> [Stored Tag] -> LBS.ByteString
+    html_F client tags = renderBS $ doctypehtml_ $ do
+        defaultHead
+        body_ $ do
+            Client.navigation client
+            Tag.form client def
+            ol_ ! [class_ "tags "] $ forM_ tags $ \tag -> do
+                li_ ! [ class_ "tag "
+                      , data_ "pk" (tshow $ thePk tag)
+                      ] $ Tag.full client tag
+
+tag_R :: Db -> (Maybe (Pk Tag), Username) -> NeptuneApp
+tag_R db (pk, username) req = do
+    (client, tag) <- throwLeftM $ verbs (method req)
+        [ "PUT" >: do
+            transact db $ do
+                client <- throwMaybe BadResource =<< Client.byName username
+                let form = getForm client (snd $ resourceId req) :: Tag.Form
+                tag <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
+                case pk of
+                    Nothing -> do
+                        tag <- Tag.create client tag
+                        pure (client, tag)
+                    Just pk -> do
+                        tag <- throwMaybe BadResource =<< Tag.update (Stored pk tag)
+                        pure (client, tag)
+        ]
+    render <- throwLeft $ negotiateMedia [("application/htmlfrag+json", htmlfrag_F client)] (acceptMedia $ negotiation req)
+    pure $ Response { status = Http.status200, responseBody = Just $ second ($ tag) render } -- FIXME status201 where appropriate
+    where
+    htmlfrag_F client tag =
+        let html = renderText $ Tag.full client tag
+            json = object ["id" .= thePk tag, "htmlfrag" .= html]
+        in encode json
+    getForm client q = Tag.Form
+        { name = decodeUtf8 <$> query_queryOne q "name"
+        }
+
+
+
+
 
 action_item_R :: Db -> (Maybe (Pk ActionItem), Username) -> NeptuneApp
 action_item_R db (pk, username) req = do

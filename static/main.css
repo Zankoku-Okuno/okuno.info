@@ -13,14 +13,20 @@
 }
 
 .action_item[data-pk],
-.project[data-pk] {
+.project[data-pk],
+.tag[data-pk] {
     max-width: 30em;
 }
 .action_item[data-pk] > select[data-tabs],
-.project[data-pk] > select[data-tabs] {
+.project[data-pk] > select[data-tabs],
+.tag[data-pk] > select[data-tabs] {
     float: right;
 }
 
+/* hack to ensure that the view/edit dropdowns in tags don't overflow their box */
+.tag[data-pk] {
+    min-height: 2em;
+}
 
 .meta span {
     border-radius: 0.4em;

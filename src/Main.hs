@@ -91,6 +91,10 @@ user_handlers db ((uncons -> Just ('~', Username -> username)) : r, q) = dispatc
         let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
         Just $ project_R db (pk, username)
     action_handlers (["projects"], q) = Just $ projects_R db username
+    action_handlers (["tags"], q) = Just $ tags_R db username
+    action_handlers (["tag"], q) = do
+        let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
+        Just $ tag_R db (pk, username)
     action_handlers _ = Nothing
 user_handlers _ _ = Nothing
 
