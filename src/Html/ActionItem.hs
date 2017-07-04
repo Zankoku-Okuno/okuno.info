@@ -12,12 +12,13 @@ import Data.ActionItem (ActionItem(..))
 import qualified Data.ActionItem as ActionItem
 import qualified Form.ActionItem as ActionItem
 import Data.Project (Project(..))
+import Data.Tag (Tag(..))
 import Data.Client (Client(..), Username(..))
 import Html.Client
 
 
-full :: Monad m => (Day, Stored Client, [Stored Project]) -> Stored ActionItem -> HtmlT m ()
-full (today, client, projects) item@(Stored pk ActionItem{..}) = do
+full :: Monad m => (Day, ([Stored Project], [Stored Tag])) -> ActionItem.Loaded -> HtmlT m ()
+full (today, options) (client, item@(Stored pk ActionItem{..}), project, tags) = do
     let tabset = concat ["action_item_", tshow pk]
     select_ [data_ "tabs" tabset] $ do
         option_ ! [value_ "view", selected_ "true"] $ "View"
@@ -27,7 +28,6 @@ full (today, client, projects) item@(Stored pk ActionItem{..}) = do
            ] $ do
         div_ ! [class_ "markdown "] $ toHtml text
         div_ ! [class_ "meta "] $ do
-            -- TODO display project & tags
             maybeM_ deadline $ \deadline -> do
                 let time_status = if | deadline < today -> "overdue"
                                      | deadline == today -> "today"
@@ -41,14 +41,20 @@ full (today, client, projects) item@(Stored pk ActionItem{..}) = do
             span_ ! [data_ "weight" weight] $ toHtml weight
             " "
             span_ ! [data_ "lifecycle" lifecycle] $ toHtml lifecycle
+            maybeM_ project $ \project@(thePayload -> Project{..}) -> do
+                div_ ! [data_ "project" $ tshow (thePk project)] $ toHtml name
+            div_ ! [class_ "tags"] $ do
+                forM_ tags $ \tag@(thePayload -> Tag{..}) -> do
+                    span_ ! [class_ "tag"] $ toHtml name
+            -- TODO display tags
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
            ] $ do
-        form (client, projects) (first Just $ toForm item)
+        form client options (first Just $ toForm item)
             ! [ autocomplete_ "off" ]
 
-form :: Monad m => (Stored Client, [Stored Project]) -> (Maybe (Pk ActionItem), ActionItem.Form) -> HtmlT m ()
-form (client, projects) (pk, ActionItem.Form{..}) = do
+form :: Monad m => Stored Client -> ([Stored Project], [Stored Tag]) -> (Maybe (Pk ActionItem), ActionItem.Form) -> HtmlT m ()
+form client (projects, tags) (pk, ActionItem.Form{..}) = do
     form_ ! [ method_ "PUT"
             , action_ $ userUrl client "/action-item"
             , class_ "action_item "
@@ -68,6 +74,27 @@ form (client, projects) (pk, ActionItem.Form{..}) = do
                 option_ ! [value_ ""] ! maybe [] (const [selected_ "true"]) (join project_id) $ "unassigned"
                 forM_ projects $ \(Stored pk Project{..}) -> do
                     option_ ! [value_ $ tshow pk] ! (if join project_id == Just pk then [selected_ "true"] else []) $ toHtml name
+            let tagset = concat ["action_item_tags_", maybe "new" tshow pk]
+            div_ $ do
+                select_ ! [data_ "multi_select" tagset] $ do
+                    option_ ! [value_ "", selected_ "true", disabled_ "true"] $ "add tags"
+                    forM_ tags $ \(Stored pk Tag{..}) -> do
+                        option_ ! [value_ $ tshow pk] $ toHtml name
+                    option_ [value_ "new"] $ "new tag..."
+                div_ ! [class_ "accum ", data_ "multi_select" tagset] $ do
+                    template_ ! [class_ "multi_select_add "] $ do
+                        div_ $ do
+                            input_ [type_ "hidden", name_ "tag", class_ "multi_select_value "]
+                            span_ ! [class_ "multi_select_label "] $ pure ()
+                            " "
+                            a_ ! [class_ "multi_select_delete "] $ "x"
+                    template_ ! [class_ "multi_select_new "] $ do
+                        div_ $ do
+                            input_ [type_ "text", name_ "new_tag", placeholder_ "new tag"]
+                            " "
+                            a_ ! [class_ "multi_select_delete "] $ "x"
+                    -- TODO present current tags
+                    pure ()
             div_ $ input_ [type_ "date", name_ "deadline", placeholder_ "due date"]
                     ! maybe [] ((:[]) . value_ . pack . showTime) (join deadline)
         div_ $ do

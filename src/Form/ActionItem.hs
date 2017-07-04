@@ -7,9 +7,10 @@ import Data.Default
 import Data.Db
 import Form
 
-import Data.Project (Project)
 import Data.ActionItem (ActionItem(..))
 import qualified Data.ActionItem as ActionItem
+import Data.Project (Project)
+import Data.Tag (Tag)
 
 
 data Form = Form
@@ -19,6 +20,7 @@ data Form = Form
     , timescale :: Maybe Text
     , deadline :: Maybe (Maybe Day)
     , project_id :: Maybe (Maybe (Pk Project))
+    , tag_ids :: Maybe [Pk Tag]
     }
 
 instance Default Form where
@@ -29,6 +31,7 @@ instance Default Form where
         , timescale = Nothing
         , deadline = Nothing
         , project_id = Nothing
+        , tag_ids = Nothing
         }
 
 instance ToForm ActionItem Form where
@@ -39,6 +42,7 @@ instance ToForm ActionItem Form where
         , timescale = Just timescale
         , deadline = Just deadline
         , project_id = Just project_id
+        , tag_ids = Just tag_ids
         }
 
 instance FromForm ActionItem Form where
@@ -47,8 +51,9 @@ instance FromForm ActionItem Form where
         lifecycle <- lifecycle
         weight <- weight
         timescale <- timescale
-        project_id <- pure $ join project_id
         deadline <- pure $ join deadline
+        project_id <- pure $ join project_id
+        tag_ids <- tag_ids
         pure ActionItem{..}
 
 instance PatchForm ActionItem Form where
@@ -59,4 +64,5 @@ instance PatchForm ActionItem Form where
         , timescale = fromMaybe (ActionItem.timescale item) timescale
         , deadline = fromMaybe (ActionItem.deadline item) deadline
         , project_id = fromMaybe (ActionItem.project_id item) project_id
+        , tag_ids = fromMaybe (ActionItem.tag_ids item) tag_ids
         }

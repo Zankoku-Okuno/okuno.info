@@ -40,23 +40,24 @@ dashboard_R :: Db -> Username -> NeptuneApp
 dashboard_R db username req = throwLeftM $ verb (method req) $
     "GET" >: do
         today <- utctDay <$> getCurrentTime
-        (client, projects, action_itemss) <- transact db $ do
+        (client, options, action_itemss) <- transact db $ do
             client <- throwMaybe BadResource =<< Client.byName username
-            projects <- Project.byClient client
+            options@(projects, _) <- ActionItem.options client
             let active_projects = filter (\(Stored _ Project{..}) -> lifecycle == "active") projects
                 action_lists = Nothing : (Just <$> active_projects)
             action_items <- ActionItem.dashboard client `mapM` action_lists
-            pure (client, projects, action_items)
-        render <- throwLeft $ negotiateMedia [("text/html", html_F (today, client, projects))] (acceptMedia $ negotiation req)
+            action_items <- (ActionItem.load client `mapM`) `mapM` action_items
+            pure (client, options, action_items)
+        render <- throwLeft $ negotiateMedia [("text/html", html_F client (today, options))] (acceptMedia $ negotiation req)
         pure $ Response { status = Http.status200, responseBody = Just $ second ($ action_itemss) render }
     where
-    html_F :: (Day, Stored Client, [Stored Project]) -> [[Stored ActionItem]] -> LBS.ByteString
-    html_F more@(_, client, projects) action_itemss = renderBS $ doctypehtml_ $ do
+    html_F :: Stored Client -> (Day, ([Stored Project], [Stored Tag])) -> [[ActionItem.Loaded]] -> LBS.ByteString
+    html_F client more@(_, options) action_itemss = renderBS $ doctypehtml_ $ do
         defaultHead
         body_ $ do
             Client.navigation client
             -- div_ ! [style_ "display: flex; "] $ do
-            ActionItem.form (client, projects) def
+            ActionItem.form client options def
                 -- a_ ! [href_ $ userUrl client "/projects"] $ "All Projects"
             hr_ []
             div_ ! [ style_ "display: flex; justify-content: space-around; "] $ do
@@ -64,10 +65,10 @@ dashboard_R db username req = throwLeftM $ verb (method req) $
                     div_ $ do
                         let projname = Nothing -- TODO have the project for the action_items available to render stuff
                         ol_ ! [class_ "action_items ", data_ "project" (fromMaybe "" projname)] $ -- FIXME id_ is inappropriate
-                            forM_ action_items $ \item -> do
+                            forM_ action_items $ \r@(_, item, _, _) -> do
                                 li_ ! [ class_ "action_item "
                                       , data_ "pk" (tshow $ thePk item)
-                                      ] $ ActionItem.full more item
+                                      ] $ ActionItem.full more r
 
 
 
@@ -189,39 +190,46 @@ action_item_R :: Db -> (Username, Maybe (Pk ActionItem)) -> NeptuneApp
 action_item_R db (username, pk) req = throwLeftM $ verbs (method req) 
     [ "PUT" >: do
         today <- utctDay <$> getCurrentTime
-        (client, item, projects) <- transact db $ do
+        (client, item, options) <- transact db $ do
             client <- throwMaybe BadResource =<< Client.byName username
-            let form = getForm client (snd $ resourceId req)
+            let (form, new_tags) = getForm client (snd $ resourceId req)
             item <- throwMaybe (error "bad form data" :: Error) $ fromForm form
+            -- TODO create new tags
+            -- TODO update item to include the new tags
             item <- case pk of
                 Nothing -> ActionItem.create (client, item)
                 Just pk -> throwMaybe BadResource =<< ActionItem.update (client, pk) item
-            projects <- Project.byClient client
-            pure (client, item, projects)
+            options <- ActionItem.options client
+            item <- ActionItem.load client item
+            pure (client, item, options)
         render <- throwLeft $ negotiateMedia
-                    [ ("text/html", html_F (today, client, projects))
-                    , ("application/htmlfrag+json", htmlfrag_F (today, client, projects))
+                    [ ("text/html", html_F (today, options))
+                    , ("application/htmlfrag+json", htmlfrag_F (today, options))
                     ] (acceptMedia $ negotiation req)
         pure $ Response { status = Http.status200, responseBody = Just $ second ($ item) render } -- FIXME status201 where appropriate
     ]
     where
-    html_F more item = renderBS $ doctypehtml_ $ do
+    html_F more r = renderBS $ doctypehtml_ $ do
         defaultHead
-        body_ $ ActionItem.full more item
-    htmlfrag_F more item = 
-        let html = renderText $ ActionItem.full more item
+        body_ $ ActionItem.full more r
+    htmlfrag_F more r@(_, item, _, _) = 
+        let html = renderText $ ActionItem.full more r
             json = object ["id" .= thePk item, "htmlfrag" .= html]
         in encode json
-    getForm client q = ActionItem.Form
-        { text = decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
-        , lifecycle = decodeUtf8 <$> query_queryOne q "lifecycle"
-        , weight = decodeUtf8 <$> query_queryOne q "weight"
-        , timescale = decodeUtf8 <$> query_queryOne q "timescale"
-        , deadline = (readTime <$>) =<< parseDeadline <$> query_queryOne q "deadline"
-        , project_id = parseProjectId <$> query_queryOne q "project"
-        }
+    getForm client q = (item, new_tags)
         where
+        item = ActionItem.Form { text = decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
+            , lifecycle = decodeUtf8 <$> query_queryOne q "lifecycle"
+            , weight = decodeUtf8 <$> query_queryOne q "weight"
+            , timescale = decodeUtf8 <$> query_queryOne q "timescale"
+            , deadline = (readTime <$>) =<< parseDeadline <$> query_queryOne q "deadline"
+            , project_id = parseProjectId <$> query_queryOne q "project"
+            , tag_ids = parseTagId <$> query_queryAny q "tag"
+            }
+        new_tags = query_queryAll q "new_tag"
         parseProjectId "" = Nothing -- TODO check this actually is what the browser does
         parseProjectId str = Just . Pk . read . unpack . decodeUtf8 $ str
+        parseTagIds [""] = Just []
+        parseTagId xs = Pk . read . unpack . decodeUtf8 <$> xs
         parseDeadline "" = Nothing
         parseDeadline str = Just . unpack . decodeUtf8 $ str

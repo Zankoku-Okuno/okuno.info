@@ -66,6 +66,7 @@ executable okuno-info
     DataKinds,
     DuplicateRecordFields,
     FlexibleContexts,
+    FlexibleInstances,
     LambdaCase,
     MultiWayIf,
     NoImplicitPrelude,

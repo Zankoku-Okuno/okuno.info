@@ -38,6 +38,72 @@ function init_tabs(dom) {
     })
 }
 
+function init_multi_select(dom) {
+    // FIXME this structure needs a controller full of the tags that are active
+    dom.querySelectorAll("select[data-multi_select]").forEach(function (select) {
+        var set = select.dataset.multi_select
+        var accum = dom.querySelector(".accum[data-multi_select='"+set+"']")
+        
+        select.addEventListener('change', function (event) {
+            var select = event.target
+            var option = select.options[select.selectedIndex]
+            select.selectedIndex = 0
+            event.preventDefault()
+            if (option.value === "new") {
+                accum.dispatchEvent(new CustomEvent('new'))
+            }
+            else {
+                var detail = {
+                    value: option.value,
+                    label: option.label,
+                }
+                accum.dispatchEvent(new CustomEvent('add', { detail: detail }))
+            }
+        })
+        
+        function init_delete_buttons(dom) {
+            var toDelete = (function () {
+                var children = []
+                for (var i = 0, e = dom.children.length; i < e; ++i) {
+                    children.push(dom.children.item(i))
+                }
+                return children
+            })()
+            dom.querySelectorAll(".multi_select_delete").forEach(function (del) {
+                del.addEventListener('click', function () {
+                    var detail = {
+                        toDelete: toDelete
+                    }
+                    accum.dispatchEvent(new CustomEvent('delete', { detail: detail }))
+                })
+            })
+        }
+
+        accum.addEventListener('add', function (event) {
+            var content = accum.querySelector("template.multi_select_add").content.cloneNode(true)
+            content.querySelectorAll(".multi_select_label").forEach(function (x) { x.textContent = event.detail.label })
+            content.querySelectorAll(".multi_select_value").forEach(function (x) { x.value = event.detail.value })
+            patch_dom(content)
+            init_delete_buttons(content)
+            accum.append(content)
+        })
+
+        accum.addEventListener('new', function () {
+            var template = accum.querySelector("template.multi_select_new")
+            var content = template.content.cloneNode(true)
+            patch_dom(content)
+            init_delete_buttons(content)
+            var input = content.querySelector("input") // must be above `.append` b/c that drains elements from `n`
+            accum.append(content)
+            input.focus() // must be below `.append` b/c it works only on elements that are part of the dom
+        })
+
+        accum.addEventListener('delete', function (event) {
+            event.detail.toDelete.forEach(function (child) { child.remove() })
+        })
+    })
+}
+
 function init_put_forms(dom) {
     dom.querySelectorAll("form[method='PUT']").forEach(function (form) {
         form.addEventListener("submit", function (e) {
@@ -45,8 +111,13 @@ function init_put_forms(dom) {
 
             var params = {}
             form.querySelectorAll("*[name]").forEach(function (data) {
-                if (data.value === "") { return }
-                params[data.name] = data.value
+                if (data.value === "") { return } // FIXME is this right?
+                if (params[data.name] === undefined) {
+                    params[data.name] = [data.value]
+                }
+                else {
+                    params[data.name].push(data.value)
+                }
             })
 
             Http.put({
@@ -138,6 +209,7 @@ function patch_dom(dom) {
     init_nav(dom)
     init_markdown(dom)
     init_tabs(dom)
+    init_multi_select(dom)
     dom.querySelectorAll(".action_item[data-pk]").forEach(init_cancel_button)
     dom.querySelectorAll(".project[data-pk]").forEach(init_cancel_button)
     dom.querySelectorAll(".tag[data-pk]").forEach(init_cancel_button)

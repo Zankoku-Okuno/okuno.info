@@ -1,10 +1,15 @@
+a.multi_select_delete {
+    cursor: pointer;
+}
+.hidden {
+    display: none;
+}
+
+
 .action_item textarea,
 .project textarea {
     width: 25em;
     height: 1.2em;
-}
-.hidden {
-    display: none;
 }
 
 .nav ul > li {

@@ -2,6 +2,14 @@ BEGIN;
 
 
 
+-- accidental over-application of tags
+DELETE
+FROM awareness__tag USING aware_action_item, tag
+WHERE
+    tag.id = tag_id AND
+    awareness_id = aware_action_item.id AND
+    owner != client_id;
+
 UPDATE tag
 SET name = category || ' ' || name
 WHERE category IS NOT NULL;

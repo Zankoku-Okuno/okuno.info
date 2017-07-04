@@ -1,9 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Data.ActionItem
     ( ActionItem(..)
+    , Loaded, load
     , dashboard
     , byPk
     , create, update
+    , options -- FIXME choose a better name and location
     ) where
 
 import ClassyPrelude
@@ -11,6 +13,9 @@ import Util (fileStr)
 import Data.Db
 
 import Data.Project (Project)
+import qualified Data.Project as Project
+import Data.Tag (Tag)
+import qualified Data.Tag as Tag
 import Data.Client (Client, Username)
 
 
@@ -21,75 +26,102 @@ data ActionItem = ActionItem
     , timescale :: Text
     , deadline :: Maybe Day
     , project_id :: Maybe (Pk Project)
+    , tag_ids :: [Pk Tag]
     } deriving (Show)
 
+type Loaded = (Stored Client, Stored ActionItem, Maybe (Stored Project), [Stored Tag])
+load :: Stored Client -> Stored ActionItem -> Sql Loaded
+load client item@(thePayload -> ActionItem{..}) = do
+    project <- case project_id of
+        Nothing -> pure Nothing
+        Just project_id -> Project.byPk project_id
+    tags <- catMaybes <$> (Tag.byId `mapM` tag_ids)
+    pure (client, item, project, tags)
 
 dashboard :: Stored Client -> Maybe (Stored Project) -> Sql [Stored ActionItem]
-dashboard client project = (xformRow <$>) <$> query [pgSQL|
-    WITH aware_action_item AS (
-        SELECT *
+dashboard client project = do
+    preitems <- (xformRow <$>) <$> query [pgSQL|
+        WITH aware_action_item AS (
+            SELECT *
+            FROM aware_action_item
+            WHERE client_id = ${unPk $ thePk client}
+        )
+        SELECT
+            action_item.id,
+            project_id,
+            text,
+            rt.lifecycle.description,
+            rt.weight.description,
+            rt.timescale.description,
+            deadline
         FROM aware_action_item
-        WHERE client_id = ${unPk $ thePk client}
-    )
-    SELECT
-        action_item.id,
-        project_id,
-        text,
-        rt.lifecycle.description,
-        rt.weight.description,
-        rt.timescale.description,
-        deadline
-    FROM aware_action_item
+                JOIN action_item ON (action_item_id = action_item.id)
+                JOIN rt.weight ON (weight_id = weight.id)
+                JOIN rt.timescale ON (timescale_id = timescale.id)
+                JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id),
+            LATERAL (SELECT
+                weight / (ln(EXTRACT(EPOCH FROM time) / 3600) + 1),
+                CASE
+                    WHEN deadline IS NULL THEN 0
+                    ELSE 11*(atan((-( (deadline - current_date) / (EXTRACT(EPOCH FROM rt.timescale.time)/(24*3600)) )/1.618)+pi())/pi()+0.5)
+                END
+                ) AS t1(value_for_time, crunch)
+        WHERE
+            action_item.id IN (
+                SELECT action_item_id
+                FROM aware_action_item
+                WHERE
+                    CASE WHEN ${unPk . thePk <$> project}::INTEGER IS NULL
+                        THEN aware_action_item.project_id IS NULL
+                        ELSE aware_action_item.project_id = ${fromMaybe (negate 1) $ unPk . thePk <$> project}
+                    END
+            ) AND
+            rt.lifecycle.description IN ('proposed', 'queued', 'waiting', 'active')
+        ORDER BY
+            rt.lifecycle.description = 'active' DESC,
+            rt.lifecycle.description = 'waiting' DESC,
+            rt.lifecycle.description = 'queued' DESC,
+            value_for_time + crunch + random() DESC,
+            last_accessed_on DESC;|]
+    _addTags client `mapM` preitems
+
+byPk :: (Stored Client, Pk ActionItem) -> Sql (Maybe (Stored ActionItem))
+byPk (client, action_item_id) = do
+    preitem <- xform <$> query [pgSQL|
+        SELECT
+            action_item.id,
+            project_id,
+            action_item.text,
+            rt.lifecycle.description,
+            rt.weight.description,
+            rt.timescale.description,
+            deadline
+        FROM aware_action_item
             JOIN action_item ON (action_item_id = action_item.id)
             JOIN rt.weight ON (weight_id = weight.id)
             JOIN rt.timescale ON (timescale_id = timescale.id)
-            JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id),
-        LATERAL (SELECT
-            weight / (ln(EXTRACT(EPOCH FROM time) / 3600) + 1),
-            CASE
-                WHEN deadline IS NULL THEN 0
-                ELSE 11*(atan((-( (deadline - current_date) / (EXTRACT(EPOCH FROM rt.timescale.time)/(24*3600)) )/1.618)+pi())/pi()+0.5)
-            END
-            ) AS t1(value_for_time, crunch)
-    WHERE
-        action_item.id IN (
-            SELECT action_item_id
-            FROM aware_action_item
-            WHERE
-                CASE WHEN ${unPk . thePk <$> project}::INTEGER IS NULL
-                    THEN aware_action_item.project_id IS NULL
-                    ELSE aware_action_item.project_id = ${fromMaybe (negate 1) $ unPk . thePk <$> project}
-                END
-        ) AND
-        rt.lifecycle.description IN ('proposed', 'queued', 'waiting', 'active')
-    ORDER BY
-        rt.lifecycle.description = 'active' DESC,
-        rt.lifecycle.description = 'waiting' DESC,
-        rt.lifecycle.description = 'queued' DESC,
-        value_for_time + crunch + random() DESC,
-        last_accessed_on DESC;|]
-
-byPk :: (Stored Client, Pk ActionItem) -> Sql (Maybe (Stored ActionItem))
-byPk (client, action_item_id) = xform <$> query [pgSQL|
-    SELECT
-        action_item.id,
-        project_id,
-        action_item.text,
-        rt.lifecycle.description,
-        rt.weight.description,
-        rt.timescale.description,
-        deadline
-    FROM aware_action_item
-        JOIN action_item ON (action_item_id = action_item.id)
-        JOIN rt.weight ON (weight_id = weight.id)
-        JOIN rt.timescale ON (timescale_id = timescale.id)
-        JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id)
-    WHERE
-        action_item_id = ${unPk action_item_id} AND
-        client_id = ${unPk $ thePk client};|]
+            JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id)
+        WHERE
+            action_item_id = ${unPk action_item_id} AND
+            client_id = ${unPk $ thePk client};|]
+    case preitem of
+        Nothing -> pure Nothing
+        Just preitem -> Just <$> _addTags client preitem
     where
     xform [] = Nothing
     xform [it] = Just $ xformRow it
+
+_addTags :: Stored Client -> Stored ActionItem -> Sql (Stored ActionItem)
+_addTags client (Stored pk preitem) = do
+    tag_ids <- (Pk <$>) <$> query [pgSQL|
+        SELECT tag_id
+        FROM awareness__tag
+            JOIN aware_action_item ON (aware_action_item.id = awareness_id)
+            JOIN action_item ON (action_item.id = action_item_id)
+        WHERE
+            aware_action_item.client_id = ${unPk $ thePk client} AND
+            action_item.id = ${unPk pk};|]
+    pure . Stored pk $ preitem {tag_ids = tag_ids}
 
 create :: (Stored Client, ActionItem) -> Sql (Stored ActionItem)
 create (client, item@ActionItem{..}) = do
@@ -158,5 +190,14 @@ update (client, pk) item@ActionItem{..} = do
         _ -> error "sql update failed"
 
 
+xformRow :: (Int32, Maybe Int32, Text, Text, Text, Text, Maybe Day) -> Stored ActionItem
 xformRow (id, (Pk <$>) -> project_id, text, lifecycle, weight, timescale, deadline) =
-    Stored (Pk id) ActionItem{..}
+    Stored (Pk id) ActionItem{tag_ids = [], ..}
+
+
+
+options :: Stored Client -> Sql ([Stored Project], [Stored Tag])
+options client = do
+    projects <- Project.byClient client
+    tags <- Tag.byClient client
+    pure (projects, tags)

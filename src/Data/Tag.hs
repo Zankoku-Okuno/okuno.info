@@ -1,5 +1,6 @@
 module Data.Tag
     ( Tag(..)
+    , byId
     , byClient
     , create, update
     ) where
@@ -15,6 +16,15 @@ data Tag = Tag
     }
     deriving (Show)
 
+
+byId :: Pk Tag -> Sql (Maybe (Stored Tag))
+byId pk = xform <$> query [pgSQL|
+    SELECT id, name
+    FROM tag
+    WHERE id = ${unPk pk};|]
+    where
+    xform [] = Nothing
+    xform [it] = Just $ xformRow it
 
 byClient :: Stored Client -> Sql [Stored Tag]
 byClient client = (xformRow <$>) <$> query [pgSQL|
