@@ -25,87 +25,49 @@ data ActionItem = ActionItem
 
 
 dashboard :: Stored Client -> Maybe (Stored Project) -> Sql [Stored ActionItem]
-dashboard client project = (xformRow <$>) <$> rows
-    where
-    rows = case project of
-        Nothing -> query [pgSQL|
-            WITH aware_action_item AS (
-                SELECT *
-                FROM aware_action_item
-                WHERE client_id = ${unPk $ thePk client}
-            )
-            SELECT
-                action_item.id,
-                project_id,
-                text,
-                rt.lifecycle.description,
-                rt.weight.description,
-                rt.timescale.description,
-                deadline
+dashboard client project = (xformRow <$>) <$> query [pgSQL|
+    WITH aware_action_item AS (
+        SELECT *
+        FROM aware_action_item
+        WHERE client_id = ${unPk $ thePk client}
+    )
+    SELECT
+        action_item.id,
+        project_id,
+        text,
+        rt.lifecycle.description,
+        rt.weight.description,
+        rt.timescale.description,
+        deadline
+    FROM aware_action_item
+            JOIN action_item ON (action_item_id = action_item.id)
+            JOIN rt.weight ON (weight_id = weight.id)
+            JOIN rt.timescale ON (timescale_id = timescale.id)
+            JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id),
+        LATERAL (SELECT
+            weight / (ln(EXTRACT(EPOCH FROM time) / 3600) + 1),
+            CASE
+                WHEN deadline IS NULL THEN 0
+                ELSE 11*(atan((-( (deadline - current_date) / (EXTRACT(EPOCH FROM rt.timescale.time)/(24*3600)) )/1.618)+pi())/pi()+0.5)
+            END
+            ) AS t1(value_for_time, crunch)
+    WHERE
+        action_item.id IN (
+            SELECT action_item_id
             FROM aware_action_item
-                    JOIN action_item ON (action_item_id = action_item.id)
-                    JOIN rt.weight ON (weight_id = weight.id)
-                    JOIN rt.timescale ON (timescale_id = timescale.id)
-                    JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id),
-                LATERAL (SELECT
-                    weight / (ln(EXTRACT(EPOCH FROM time) / 3600) + 1),
-                    CASE
-                        WHEN deadline IS NULL THEN 0
-                        ELSE 11*(atan((-( (deadline - current_date) / (EXTRACT(EPOCH FROM rt.timescale.time)/(24*3600)) )/1.618)+pi())/pi()+0.5)
-                    END
-                    ) AS t1(value_for_time, crunch)
             WHERE
-                action_item.id IN (
-                    SELECT action_item_id
-                    FROM aware_action_item
-                    WHERE aware_action_item.project_id IS NULL
-                ) AND
-                rt.lifecycle.description IN ('proposed', 'queued', 'waiting', 'active')
-            ORDER BY
-                rt.lifecycle.description = 'active' DESC,
-                rt.lifecycle.description = 'waiting' DESC,
-                rt.lifecycle.description = 'queued' DESC,
-                value_for_time + crunch + random() DESC,
-                last_accessed_on DESC;|]
-        Just project -> query [pgSQL|
-            WITH aware_action_item AS (
-                SELECT *
-                FROM aware_action_item
-                WHERE client_id = ${unPk $ thePk client}
-            )
-            SELECT
-                action_item.id,
-                project_id,
-                text,
-                rt.lifecycle.description,
-                rt.weight.description,
-                rt.timescale.description,
-                deadline
-            FROM aware_action_item
-                    JOIN action_item ON (action_item_id = action_item.id)
-                    JOIN rt.weight ON (weight_id = weight.id)
-                    JOIN rt.timescale ON (timescale_id = timescale.id)
-                    JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id),
-                LATERAL (SELECT
-                    weight / (ln(EXTRACT(EPOCH FROM time) / 3600) + 1),
-                    CASE
-                        WHEN deadline IS NULL THEN 0
-                        ELSE 11*(atan((-( (deadline - current_date) / (EXTRACT(EPOCH FROM rt.timescale.time)/(24*3600)) )/1.618)+pi())/pi()+0.5)
-                    END
-                    ) AS t1(value_for_time, crunch)
-            WHERE
-                action_item.id IN (
-                    SELECT action_item_id
-                    FROM aware_action_item
-                    WHERE aware_action_item.project_id = ${unPk $ thePk project}
-                ) AND
-                rt.lifecycle.description IN ('proposed', 'queued', 'waiting', 'active')
-            ORDER BY
-                rt.lifecycle.description = 'active' DESC,
-                rt.lifecycle.description = 'waiting' DESC,
-                rt.lifecycle.description = 'queued' DESC,
-                value_for_time + crunch + random() DESC,
-                last_accessed_on DESC;|]
+                CASE WHEN ${unPk . thePk <$> project}::INTEGER IS NULL
+                    THEN aware_action_item.project_id IS NULL
+                    ELSE aware_action_item.project_id = ${fromMaybe (negate 1) $ unPk . thePk <$> project}
+                END
+        ) AND
+        rt.lifecycle.description IN ('proposed', 'queued', 'waiting', 'active')
+    ORDER BY
+        rt.lifecycle.description = 'active' DESC,
+        rt.lifecycle.description = 'waiting' DESC,
+        rt.lifecycle.description = 'queued' DESC,
+        value_for_time + crunch + random() DESC,
+        last_accessed_on DESC;|]
 
 byPk :: (Stored Client, Pk ActionItem) -> Sql (Maybe (Stored ActionItem))
 byPk (client, action_item_id) = xform <$> query [pgSQL|
