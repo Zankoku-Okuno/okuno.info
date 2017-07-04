@@ -139,6 +139,8 @@ function patch_dom(dom) {
     init_markdown(dom)
     init_tabs(dom)
     dom.querySelectorAll(".action_item[data-pk]").forEach(init_cancel_button)
+    dom.querySelectorAll(".project[data-pk]").forEach(init_cancel_button)
+    dom.querySelectorAll(".tag[data-pk]").forEach(init_cancel_button)
     init_put_forms(dom)
     init_action_item_forms(dom)
     init_item_forms(dom, {

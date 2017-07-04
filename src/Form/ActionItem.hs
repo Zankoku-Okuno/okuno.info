@@ -18,6 +18,7 @@ data Form = Form
     , weight :: Maybe Text
     , timescale :: Maybe Text
     , deadline :: Maybe Day -- FIXME should be Maybe (Maybe Day)
+    , project_id :: Maybe (Maybe (Pk Project))
     }
 
 instance Default Form where
@@ -27,6 +28,7 @@ instance Default Form where
         , weight = Nothing
         , timescale = Nothing
         , deadline = Nothing
+        , project_id = Nothing
         }
 
 instance ToForm ActionItem Form where
@@ -36,6 +38,7 @@ instance ToForm ActionItem Form where
         , weight = Just weight
         , timescale = Just timescale
         , deadline = deadline
+        , project_id = Just project_id
         }
 
 instance FromForm ActionItem Form where
@@ -44,6 +47,7 @@ instance FromForm ActionItem Form where
         action_status <- action_status
         weight <- weight
         timescale <- timescale
+        project_id <- pure $ join project_id
         pure ActionItem{..}
 
 instance PatchForm ActionItem Form where
@@ -53,4 +57,5 @@ instance PatchForm ActionItem Form where
         , weight = fromMaybe (ActionItem.weight item) weight
         , timescale = fromMaybe (ActionItem.timescale item) timescale
         , deadline = deadline <|> ActionItem.deadline item
+        , project_id = fromMaybe (ActionItem.project_id item) project_id
         }

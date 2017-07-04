@@ -60,15 +60,14 @@ form (client, projects) (pk, ActionItem.Form{..}) = do
         div_ $ textarea_ ! [name_ "text", required_ "true", autofocus_, placeholder_ "describe action item"] $
             maybeM_ text toHtml
         div_ [class_ "meta "] $ do
-            -- TODO select project
-            -- select_ ! [name_ "project"] $ do
-            --     option_ ! [value_ ""] ! maybe [] (const [selected_ "true"]) (join project) $ "unassigned"
-            --     forM_ projects $ \(Stored pk Project{..}) -> do
-            --         option_ ! [value_ $ tshow pk] ! (if (join project) == (Just pk) then [selected_ "true"] else []) $ toHtml name
             div_ $ do
                 dropdown_ (maybe (Left "select timescale") Right timescale) RT.timescale ! [name_ "timescale", required_ "true"]
                 dropdown_ (maybe (Left "select weight") Right weight) RT.weight ! [name_ "weight", required_ "true"]
                 dropdown_ (maybe (Right "queued") Right action_status) RT.action_status ! [name_ "action_status", required_ "true"]
+            select_ ! [name_ "project"] $ do
+                option_ ! [value_ ""] ! maybe [] (const [selected_ "true"]) (join project_id) $ "unassigned"
+                forM_ projects $ \(Stored pk Project{..}) -> do
+                    option_ ! [value_ $ tshow pk] ! (if join project_id == Just pk then [selected_ "true"] else []) $ toHtml name
             div_ $ input_ [type_ "date", name_ "deadline", placeholder_ "due date"]
                     ! maybe [] ((:[]) . value_ . pack . showTime) deadline
         div_ $ do

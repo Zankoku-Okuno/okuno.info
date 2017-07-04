@@ -22,7 +22,6 @@ import Data.ActionItem (ActionItem(..))
 import qualified Data.ActionItem as ActionItem
 import qualified Html.ActionItem as ActionItem
 import qualified Form.ActionItem as ActionItem
-import qualified Data.Aware.ActionItem as ActionItem
 import Data.Project (Project(..))
 import qualified Data.Project as Project
 import qualified Html.Project as Project
@@ -186,35 +185,25 @@ tag_R db (pk, username) req = do
 
 
 
-action_item_R :: Db -> (Maybe (Pk ActionItem), Username) -> NeptuneApp
-action_item_R db (pk, username) req = do
-    today <- utctDay <$> getCurrentTime
-    (client, projects) <- transact db $ do
+action_item_R :: Db -> (Username, Maybe (Pk ActionItem)) -> NeptuneApp
+action_item_R db (username, pk) req = throwLeftM $ verbs (method req) 
+    [ "PUT" >: do
+        today <- utctDay <$> getCurrentTime
+        (client, item, projects) <- transact db $ do
             client <- throwMaybe BadResource =<< Client.byName username
-            project <- Project.byClient client
-            pure (client, project)
-    render <- throwLeft $ negotiateMedia
-                [ ("text/html", html_F (today, client, projects))
-                , ("application/htmlfrag+json", htmlfrag_F (today, client, projects))
-                ] (acceptMedia $ negotiation req)
-    item <- throwLeftM $ verbs (method req)
-        [ "GET" >: do
-            pk <- throwMaybe BadResource pk
-            transact db $ ActionItem.byPk pk >>= \case
-                Nothing -> throw BadResource
-                Just item -> pure item
-        , "PUT" >: do
-            let form = getForm (snd $ resourceId req) :: ActionItem.Form
-            item <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
-            case pk of
-                Nothing -> transact db $ do
-                    client <- throwMaybe BadResource =<< Client.byName username
-                    ActionItem.create client item Nothing -- TODO set project
-                Just pk -> transact db $ do
-                    result <- ActionItem.update (Stored pk item)
-                    throwMaybe BadResource result
-        ]
-    pure $ Response { status = Http.status200, responseBody = Just $ second ($ item) render } -- FIXME status201 where appropriate
+            let form = getForm client (snd $ resourceId req)
+            item <- throwMaybe (error "bad form data" :: Error) $ fromForm form
+            item <- case pk of
+                Nothing -> ActionItem.create (client, item)
+                Just pk -> throwMaybe BadResource =<< ActionItem.update (client, pk) item
+            projects <- Project.byClient client
+            pure (client, item, projects)
+        render <- throwLeft $ negotiateMedia
+                    [ ("text/html", html_F (today, client, projects))
+                    , ("application/htmlfrag+json", htmlfrag_F (today, client, projects))
+                    ] (acceptMedia $ negotiation req)
+        pure $ Response { status = Http.status200, responseBody = Just $ second ($ item) render } -- FIXME status201 where appropriate
+    ]
     where
     html_F more item = renderBS $ doctypehtml_ $ do
         defaultHead
@@ -223,10 +212,14 @@ action_item_R db (pk, username) req = do
         let html = renderText $ ActionItem.full more item
             json = object ["id" .= thePk item, "htmlfrag" .= html]
         in encode json
-    getForm q = ActionItem.Form
+    getForm client q = ActionItem.Form
         { text = decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
         , action_status = decodeUtf8 <$> query_queryOne q "action_status"
         , weight = decodeUtf8 <$> query_queryOne q "weight"
         , timescale = decodeUtf8 <$> query_queryOne q "timescale"
         , deadline = readTime =<< unpack . decodeUtf8 <$> query_queryOne q "deadline"
+        , project_id = parseProjectId <$> query_queryOne q "project"
         }
+        where
+        parseProjectId "" = Nothing -- TODO check this actually is what the browser does
+        parseProjectId str = Just . Pk . read . unpack . decodeUtf8 $ str

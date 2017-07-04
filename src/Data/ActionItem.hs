@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Data.ActionItem
     ( ActionItem(..)
-    , Data.ActionItem.all, dashboard
+    , dashboard
     , byPk
     , create, update
     ) where
@@ -11,7 +11,7 @@ import Util (fileStr)
 import Data.Db
 
 import Data.Project (Project)
-import Data.Client (Client)
+import Data.Client (Client, Username)
 
 
 data ActionItem = ActionItem
@@ -20,24 +20,9 @@ data ActionItem = ActionItem
     , weight :: Text
     , timescale :: Text
     , deadline :: Maybe Day
+    , project_id :: Maybe (Pk Project)
     } deriving (Show)
 
-
-all :: Sql [Stored ActionItem]
-all = (xformRow <$>) <$> query [pgSQL|
-    SELECT
-        action_item.id,
-        text,
-        rt.action_status.description,
-        rt.weight.description,
-        rt.timescale.description,
-        deadline
-    FROM action_item
-        JOIN rt.weight ON (weight_id = weight.id)
-        JOIN rt.timescale ON (timescale_id = timescale.id)
-        JOIN rt.action_status ON (action_status_id = action_status.id)
-    WHERE
-        rt.action_status.description IN ('proposed', 'queued', 'waiting', 'active');|]
 
 dashboard :: Stored Client -> Maybe (Stored Project) -> Sql [Stored ActionItem]
 dashboard client project = (xformRow <$>) <$> rows
@@ -51,13 +36,14 @@ dashboard client project = (xformRow <$>) <$> rows
             )
             SELECT
                 action_item.id,
+                project_id,
                 text,
                 rt.action_status.description,
                 rt.weight.description,
                 rt.timescale.description,
                 deadline
-            FROM
-                action_item
+            FROM awareness
+                    JOIN action_item ON (action_item_id = action_item.id)
                     JOIN rt.weight ON (weight_id = weight.id)
                     JOIN rt.timescale ON (timescale_id = timescale.id)
                     JOIN rt.action_status ON (action_status_id = action_status.id),
@@ -89,13 +75,14 @@ dashboard client project = (xformRow <$>) <$> rows
             )
             SELECT
                 action_item.id,
+                project_id,
                 text,
                 rt.action_status.description,
                 rt.weight.description,
                 rt.timescale.description,
                 deadline
-            FROM
-                action_item
+            FROM awareness
+                    JOIN action_item ON (action_item_id = action_item.id)
                     JOIN rt.weight ON (weight_id = weight.id)
                     JOIN rt.timescale ON (timescale_id = timescale.id)
                     JOIN rt.action_status ON (action_status_id = action_status.id),
@@ -120,27 +107,30 @@ dashboard client project = (xformRow <$>) <$> rows
                 value_for_time + crunch + random() DESC,
                 last_accessed_on DESC;|]
 
-byPk :: Pk ActionItem -> Sql (Maybe (Stored ActionItem))
-byPk pk = xform <$> query [pgSQL|
+byPk :: (Stored Client, Pk ActionItem) -> Sql (Maybe (Stored ActionItem))
+byPk (client, action_item_id) = xform <$> query [pgSQL|
     SELECT
         action_item.id,
-        text,
+        project_id,
+        action_item.text,
         rt.action_status.description,
         rt.weight.description,
         rt.timescale.description,
         deadline
-    FROM action_item
+    FROM awareness
+        JOIN action_item ON (action_item_id = action_item.id)
         JOIN rt.weight ON (weight_id = weight.id)
         JOIN rt.timescale ON (timescale_id = timescale.id)
         JOIN rt.action_status ON (action_status_id = action_status.id)
     WHERE
-        action_item.id = ${unPk pk};|]
+        action_item_id = ${unPk action_item_id} AND
+        client_id = ${unPk $ thePk client};|]
     where
     xform [] = Nothing
     xform [it] = Just $ xformRow it
 
-create :: Stored Client -> ActionItem -> Maybe (Stored Project) -> Sql (Stored ActionItem)
-create client item@(ActionItem{..}) project = do
+create :: (Stored Client, ActionItem) -> Sql (Stored ActionItem)
+create (client, item@ActionItem{..}) = do
     ids <- query [pgSQL|
         -- FIXME add defaults in the database for the timing stuff
         INSERT INTO action_item (
@@ -175,13 +165,13 @@ create client item@(ActionItem{..}) project = do
         ) VALUES (
             ${unPk $ thePk item},
             ${unPk $ thePk client},
-            ${unPk . thePk <$> project}
+            ${unPk <$> project_id}
         );|]
     pure item
 
-update :: Stored ActionItem -> Sql (Maybe (Stored ActionItem))
-update item@(Stored pk ActionItem{..}) = do
-    ids <- query [pgSQL|
+update :: (Stored Client, Pk ActionItem) -> ActionItem -> Sql (Maybe (Stored ActionItem))
+update (client, pk) item@ActionItem{..} = do
+    action_item_ids <- query [pgSQL|
         UPDATE action_item SET
             text = ${text},
             action_status_id = (SELECT id from rt.action_status WHERE description = ${action_status}),
@@ -193,12 +183,18 @@ update item@(Stored pk ActionItem{..}) = do
         WHERE
             action_item.id = ${unPk pk}
         RETURNING id;|]
-    -- TODO update project
-    pure $ case ids of
+    awareness_ids <- query [pgSQL|
+        UPDATE awareness SET
+            project_id = ${unPk <$> project_id}
+        WHERE
+            action_item_id = ${unPk pk} AND
+            client_id = ${unPk $ thePk client}
+        RETURNING id;|]
+    pure $ case zip action_item_ids awareness_ids of
         [] -> Nothing
-        [pk :: Int32] -> Just item
-        _ -> error "sql insert failed"
+        [(Pk -> pk :: Pk ActionItem, _ :: Int32)] -> Just $ Stored pk item
+        _ -> error "sql update failed"
 
 
-xformRow (id, text, action_status, weight, timescale, deadline) =
+xformRow (id, (Pk <$>) -> project_id, text, action_status, weight, timescale, deadline) =
     Stored (Pk id) ActionItem{..}

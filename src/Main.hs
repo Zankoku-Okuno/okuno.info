@@ -86,7 +86,7 @@ user_handlers db ((uncons -> Just ('~', Username -> username)) : r, q) = dispatc
     action_handlers ([], q) = Just $ dashboard_R db username
     action_handlers (["action-item"], q) = do
         let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
-        Just $ action_item_R db (pk, username)
+        Just $ action_item_R db (username, pk)
     action_handlers (["project"], q) = do
         let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
         Just $ project_R db (pk, username)
