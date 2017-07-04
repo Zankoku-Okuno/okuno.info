@@ -90,9 +90,9 @@ DROP TABLE rt.action_type;
 
 
 -- move behalf_of into tags
-INSERT INTO tag (owner, category, name)
+INSERT INTO tag (owner, name)
 (
-    SELECT client.id, 'for', behalf_of
+    SELECT DISTINCT client.id, 'for ' || behalf_of
     FROM action_item
         JOIN client ON TRUE
     WHERE behalf_of IS NOT NULL
