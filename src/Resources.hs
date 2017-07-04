@@ -43,7 +43,7 @@ dashboard_R db username req = throwLeftM $ verb (method req) $
         (client, projects, action_itemss) <- transact db $ do
             client <- throwMaybe BadResource =<< Client.byName username
             projects <- Project.byClient client
-            let active_projects = filter (\(Stored _ Project{..}) -> action_status == "active") projects
+            let active_projects = filter (\(Stored _ Project{..}) -> lifecycle == "active") projects
                 action_lists = Nothing : (Just <$> active_projects)
             action_items <- ActionItem.dashboard client `mapM` action_lists
             pure (client, projects, action_items)
@@ -126,7 +126,7 @@ project_R db (pk, username) req = do
     getForm client q = Project.Form
         { name = decodeUtf8 <$> query_queryOne q "name"
         , mission = decodeUtf8 <$> query_queryOne q "mission"
-        , action_status = decodeUtf8 <$> query_queryOne q "action_status"
+        , lifecycle = decodeUtf8 <$> query_queryOne q "lifecycle"
         }
 
 
@@ -214,12 +214,14 @@ action_item_R db (username, pk) req = throwLeftM $ verbs (method req)
         in encode json
     getForm client q = ActionItem.Form
         { text = decodeUtf8 <$> query_queryOne q "text" -- FIXME url encoding seems to already happen, but where?
-        , action_status = decodeUtf8 <$> query_queryOne q "action_status"
+        , lifecycle = decodeUtf8 <$> query_queryOne q "lifecycle"
         , weight = decodeUtf8 <$> query_queryOne q "weight"
         , timescale = decodeUtf8 <$> query_queryOne q "timescale"
-        , deadline = readTime =<< unpack . decodeUtf8 <$> query_queryOne q "deadline"
+        , deadline = (readTime <$>) =<< parseDeadline <$> query_queryOne q "deadline"
         , project_id = parseProjectId <$> query_queryOne q "project"
         }
         where
         parseProjectId "" = Nothing -- TODO check this actually is what the browser does
         parseProjectId str = Just . Pk . read . unpack . decodeUtf8 $ str
+        parseDeadline "" = Nothing
+        parseDeadline str = Just . unpack . decodeUtf8 $ str

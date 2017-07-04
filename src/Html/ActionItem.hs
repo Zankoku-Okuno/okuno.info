@@ -40,7 +40,7 @@ full (today, client, projects) item@(Stored pk ActionItem{..}) = do
             " "
             span_ ! [data_ "weight" weight] $ toHtml weight
             " "
-            span_ ! [data_ "action_status" action_status] $ toHtml action_status
+            span_ ! [data_ "lifecycle" lifecycle] $ toHtml lifecycle
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
            ] $ do
@@ -63,13 +63,13 @@ form (client, projects) (pk, ActionItem.Form{..}) = do
             div_ $ do
                 dropdown_ (maybe (Left "select timescale") Right timescale) RT.timescale ! [name_ "timescale", required_ "true"]
                 dropdown_ (maybe (Left "select weight") Right weight) RT.weight ! [name_ "weight", required_ "true"]
-                dropdown_ (maybe (Right "queued") Right action_status) RT.action_status ! [name_ "action_status", required_ "true"]
+                dropdown_ (maybe (Right "queued") Right lifecycle) RT.lifecycle ! [name_ "lifecycle", required_ "true"]
             select_ ! [name_ "project"] $ do
                 option_ ! [value_ ""] ! maybe [] (const [selected_ "true"]) (join project_id) $ "unassigned"
                 forM_ projects $ \(Stored pk Project{..}) -> do
                     option_ ! [value_ $ tshow pk] ! (if join project_id == Just pk then [selected_ "true"] else []) $ toHtml name
             div_ $ input_ [type_ "date", name_ "deadline", placeholder_ "due date"]
-                    ! maybe [] ((:[]) . value_ . pack . showTime) deadline
+                    ! maybe [] ((:[]) . value_ . pack . showTime) (join deadline)
         div_ $ do
             button_ ! [type_ "submit"] $ maybe "Create" (const "Save") pk
             button_ ! [type_ "reset"] $ "Cancel"

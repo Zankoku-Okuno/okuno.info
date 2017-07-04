@@ -27,7 +27,7 @@ full client project@(Stored pk Project{..}) = do
         div_ $ toHtml name
         p_ ! [class_ "mission markdown "] $ toHtml mission
         div_ ! [class_ "meta "]$ do
-            span_ ! [data_ "action_status" action_status] $ toHtml action_status
+            span_ ! [data_ "lifecycle" lifecycle] $ toHtml lifecycle
     div_ ! [ data_ "tabset" tabset
            , data_ "tab" "edit"
            ] $ do
@@ -48,7 +48,7 @@ form client (pk, Project.Form{..}) = do
             maybeM_ mission toHtml
 
         div_ $ do
-            dropdown_ (maybe (Right "queued") Right action_status) RT.action_status ! [name_ "action_status", required_ "true"]
+            dropdown_ (maybe (Right "queued") Right lifecycle) RT.lifecycle ! [name_ "lifecycle", required_ "true"]
 
         div_ $ do
             button_ ! [type_ "submit"] $ maybe "Create" (const "Save") pk

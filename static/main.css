@@ -40,11 +40,11 @@
     border: thin grey solid;
 }
 
-.meta span[data-action_status='active'] {
+.meta span[data-lifecycle='active'] {
     border: thin green solid;
 }
-.meta span[data-action_status='waiting'] {
+.meta span[data-lifecycle='waiting'] {
     color: grey;
 }
-.meta span[data-action_status='queued'] {
+.meta span[data-lifecycle='queued'] {
 }

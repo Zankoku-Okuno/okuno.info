@@ -15,7 +15,7 @@ import Data.Client (Client)
 data Project = Project
     { name :: Text
     , mission :: Text
-    , action_status :: Text
+    , lifecycle :: Text
     } deriving (Show)
 
 all :: Sql [Stored Project]
@@ -24,11 +24,11 @@ all = (xformRow <$>) <$> query [pgSQL|
         project.id,
         name,
         mission,
-        rt.action_status.description
+        rt.lifecycle.description
     FROM project
-        JOIN rt.action_status ON (action_status_id = action_status.id)
+        JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id)
     ORDER BY
-        rt.action_status.description = 'active' DESC,
+        rt.lifecycle.description = 'active' DESC,
         name ASC;
     |]
 
@@ -38,9 +38,9 @@ byPk pk = xform <$> query [pgSQL|
         project.id,
         name,
         mission,
-        rt.action_status.description
+        rt.lifecycle.description
     FROM project
-        JOIN rt.action_status ON (action_status_id = action_status.id)
+        JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id)
     WHERE
         project.id = ${unPk pk};|]
     where
@@ -53,13 +53,13 @@ byClient client = (xformRow <$>) <$> query [pgSQL|
         project.id,
         name,
         mission,
-        rt.action_status.description
+        rt.lifecycle.description
     FROM project
-        JOIN rt.action_status ON (action_status_id = action_status.id)
+        JOIN rt.lifecycle ON (lifecycle_id = lifecycle.id)
     WHERE
         owner = ${unPk $ thePk client}
     ORDER BY
-        rt.action_status.description = 'active' DESC,
+        rt.lifecycle.description = 'active' DESC,
         name ASC;|]
 
 create :: Stored Client -> Project -> Sql (Stored Project)
@@ -70,16 +70,16 @@ create client project@(Project{..}) = do
             name,
             owner,
             mission,
-            action_status_id
+            lifecycle_id
         ) (
             SELECT
                 ${name},
                 ${unPk $ thePk client},
                 ${mission},
-                rt.action_status.id
-            FROM rt.action_status
+                rt.lifecycle.id
+            FROM rt.lifecycle
             WHERE
-                rt.action_status.description = ${action_status}
+                rt.lifecycle.description = ${lifecycle}
         )
         RETURNING id;|]
     project <- case ids of
@@ -93,7 +93,7 @@ update item@(Stored pk Project{..}) = do
         UPDATE project SET
             name = ${name},
             mission = ${mission},
-            action_status_id = (SELECT id from rt.action_status WHERE description = ${action_status}),
+            lifecycle_id = (SELECT id from rt.lifecycle WHERE description = ${lifecycle}),
             last_accessed_on = current_date,
             last_update_on = current_date
         WHERE
@@ -104,4 +104,4 @@ update item@(Stored pk Project{..}) = do
         [pk :: Int32] -> Just item
         _ -> error "sql insert failed"
 
-xformRow (id, name, mission, action_status) = Stored (Pk id) $ Project{..}
+xformRow (id, name, mission, lifecycle) = Stored (Pk id) $ Project{..}

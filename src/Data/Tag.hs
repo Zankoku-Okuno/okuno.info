@@ -22,11 +22,8 @@ byClient client = (xformRow <$>) <$> query [pgSQL|
         tag.id,
         name
     FROM tag
-    WHERE
-        owner = ${unPk $ thePk client}
-    ORDER BY
-        category ASC,
-        name ASC;|]
+    WHERE owner = ${unPk $ thePk client}
+    ORDER BY name ASC;|]
 
 
 create :: Stored Client -> Tag -> Sql (Stored Tag)
