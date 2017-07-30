@@ -229,7 +229,6 @@ action_item_R db (username, pk) req = throwLeftM $ verbs (method req)
         new_tags = query_queryAll q "new_tag"
         parseProjectId "" = Nothing -- TODO check this actually is what the browser does
         parseProjectId str = Just . Pk . read . unpack . decodeUtf8 $ str
-        parseTagIds [""] = Just []
         parseTagId xs = Pk . read . unpack . decodeUtf8 <$> xs
         parseDeadline "" = Nothing
         parseDeadline str = Just . unpack . decodeUtf8 $ str

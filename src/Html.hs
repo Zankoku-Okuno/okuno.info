@@ -40,6 +40,8 @@ defaultHead = head_ $ do
     meta_ [charset_ "utf-8"]
     title_ "残酷 奧泉 ꙮ‽"
 
+    js_ "/static/polyfill.js"
+
     js_ "/static/classList.js"
     js_ "/static/autoresize-textarea.js"
 
