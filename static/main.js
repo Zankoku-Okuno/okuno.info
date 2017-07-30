@@ -40,6 +40,11 @@ function init_tabs(dom) {
 
 function init_multi_select(dom) {
     // FIXME this structure needs a controller full of the tags that are active
+
+
+
+
+    return
     dom.querySelectorAll("select[data-multi_select]").forEach(function (select) {
         var set = select.dataset.multi_select
         var accum = dom.querySelector(".accum[data-multi_select='"+set+"']")
@@ -79,6 +84,8 @@ function init_multi_select(dom) {
             })
         }
 
+        accum.querySelectorAll("div").forEach(init_delete_buttons)
+
         accum.addEventListener('add', function (event) {
             var content = accum.querySelector("template.multi_select_add").content.cloneNode(true)
             content.querySelectorAll(".multi_select_label").forEach(function (x) { x.textContent = event.detail.label })
@@ -111,12 +118,30 @@ function init_put_forms(dom) {
 
             var params = {}
             form.querySelectorAll("*[name]").forEach(function (data) {
-                if (data.value === "") { return } // FIXME is this right?
+                var values = (function () {
+                    var values = []
+                    function add(x) {
+                        if (x !== "") { values.push(x) }
+                    }
+
+                    if (data.selectedOptions !== undefined) {
+                        for (var i = 0, e = data.selectedOptions.length; i < e; i++) {
+                            add(data.selectedOptions[i].value)
+                        }
+                    }
+                    else {
+                        add(data.value)
+                    }
+                    return values
+                })()
+
+                if (values === []) { return }
+
                 if (params[data.name] === undefined) {
-                    params[data.name] = [data.value]
+                    params[data.name] = values
                 }
                 else {
-                    params[data.name].push(data.value)
+                    params[data.name] = params[data.name].concat(values)
                 }
             })
 

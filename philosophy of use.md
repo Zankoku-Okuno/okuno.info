@@ -45,6 +45,18 @@
    It may be a good indicator most of the time, but no metric encapsulates success or fulfilment.
    Therefore, don't get attached to the metric.
 
+ * Multiplicative vs. Additive Value
+
+   The prototypical additive value is creating a product which creates value, but on which nothing else builds.
+   The prototypical multiplicative value is creating a product from which every other activity derives value.
+
+ * Watch out for brain noise.
+
+   If you're still finding yourself thinking about what to do next (i.e. during a commute), then
+   make sure you have the app on you, and if you can't do anything, have a light but captivating game available.
+
+ * Mainenance doesn't happen until de-clutter is done.
+
 TODO: scheduling
 TODO: when are things important?
 TODO: working memory size

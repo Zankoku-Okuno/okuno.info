@@ -2,6 +2,19 @@ BEGIN;
 
 
 
+
+
+ALTER TABLE awareness
+    RENAME TO aware_action_item;
+
+ALTER TABLE rt.action_status
+    RENAME TO lifecycle;
+ALTER TABLE action_item
+    RENAME COLUMN action_status_id TO lifecycle_id;
+ALTER TABLE project
+    RENAME COLUMN action_status_id TO lifecycle_id;
+
+
 -- accidental over-application of tags
 DELETE
 FROM awareness__tag USING aware_action_item, tag
@@ -19,15 +32,7 @@ ALTER TABLE tag
     DROP COLUMN category,
     ADD CONSTRAINT tag_unique_cat_name UNIQUE (owner, name);
 
-ALTER TABLE awareness
-    RENAME TO aware_action_item;
 
-ALTER TABLE rt.action_status
-    RENAME TO lifecycle;
-ALTER TABLE action_item
-    RENAME COLUMN action_status_id TO lifecycle_id;
-ALTER TABLE project
-    RENAME COLUMN action_status_id TO lifecycle_id;
 
 
 

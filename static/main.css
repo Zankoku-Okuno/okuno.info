@@ -53,3 +53,11 @@ a.multi_select_delete {
 }
 .meta span[data-lifecycle='queued'] {
 }
+
+.meta span.tag {
+    background-color: #DDD;
+    border-radius: 3px;
+    padding-left: 0.25em;
+    padding-right: 0.25em;
+    margin-left: 0.125em
+}

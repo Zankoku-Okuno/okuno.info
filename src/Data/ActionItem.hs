@@ -9,7 +9,7 @@ module Data.ActionItem
     ) where
 
 import ClassyPrelude
-import Util (fileStr)
+import Util (maybeM_)
 import Data.Db
 
 import Data.Project (Project)
@@ -83,7 +83,7 @@ dashboard client project = do
             rt.lifecycle.description = 'queued' DESC,
             value_for_time + crunch + random() DESC,
             last_accessed_on DESC;|]
-    _addTags client `mapM` preitems
+    _loadTags client `mapM` preitems
 
 byPk :: (Stored Client, Pk ActionItem) -> Sql (Maybe (Stored ActionItem))
 byPk (client, action_item_id) = do
@@ -106,13 +106,13 @@ byPk (client, action_item_id) = do
             client_id = ${unPk $ thePk client};|]
     case preitem of
         Nothing -> pure Nothing
-        Just preitem -> Just <$> _addTags client preitem
+        Just preitem -> Just <$> _loadTags client preitem
     where
     xform [] = Nothing
     xform [it] = Just $ xformRow it
 
-_addTags :: Stored Client -> Stored ActionItem -> Sql (Stored ActionItem)
-_addTags client (Stored pk preitem) = do
+_loadTags :: Stored Client -> Stored ActionItem -> Sql (Stored ActionItem)
+_loadTags client (Stored pk preitem) = do
     tag_ids <- (Pk <$>) <$> query [pgSQL|
         SELECT tag_id
         FROM awareness__tag
@@ -150,8 +150,7 @@ create (client, item@ActionItem{..}) = do
     item <- case ids of
         [pk] -> pure $ Stored (Pk pk) item
         _ -> error "sql insert failed"
-    -- TODO add to a project
-    execute [pgSQL|
+    ids <- query [pgSQL|
         INSERT INTO aware_action_item (
             action_item_id,
             client_id,
@@ -160,12 +159,24 @@ create (client, item@ActionItem{..}) = do
             ${unPk $ thePk item},
             ${unPk $ thePk client},
             ${unPk <$> project_id}
+        )
+        RETURNING id;|]
+    aware <- case ids of
+        [pk] -> pure (pk :: Int32)
+        _ -> error "sql insert failed"
+    forM_ tag_ids $ \tag_id -> void $ execute [pgSQL|
+        INSERT INTO awareness__tag (
+            awareness_id,
+            tag_id
+        ) VALUES (
+            ${aware},
+            ${unPk tag_id}
         );|]
     pure item
 
 update :: (Stored Client, Pk ActionItem) -> ActionItem -> Sql (Maybe (Stored ActionItem))
 update (client, pk) item@ActionItem{..} = do
-    action_item_ids <- query [pgSQL|
+    ids <- query [pgSQL|
         UPDATE action_item SET
             text = ${text},
             lifecycle_id = (SELECT id from rt.lifecycle WHERE description = ${lifecycle}),
@@ -177,17 +188,33 @@ update (client, pk) item@ActionItem{..} = do
         WHERE
             action_item.id = ${unPk pk}
         RETURNING id;|]
-    awareness_ids <- query [pgSQL|
-        UPDATE aware_action_item SET
-            project_id = ${unPk <$> project_id}
-        WHERE
-            action_item_id = ${unPk pk} AND
-            client_id = ${unPk $ thePk client}
-        RETURNING id;|]
-    pure $ case zip action_item_ids awareness_ids of
-        [] -> Nothing
-        [(Pk -> pk :: Pk ActionItem, _ :: Int32)] -> Just $ Stored pk item
-        _ -> error "sql update failed"
+    item <- case ids of
+        [] -> pure Nothing
+        [pk] -> pure . Just $ Stored (Pk pk) item
+        _ -> error "sql insert failed"
+    maybeM_ item $ \item -> do
+        ids <- query [pgSQL|
+            UPDATE aware_action_item SET
+                project_id = ${unPk <$> project_id}
+            WHERE
+                action_item_id = ${unPk pk} AND
+                client_id = ${unPk $ thePk client}
+            RETURNING id;|]
+        aware <- case ids of
+            [pk] -> pure (pk :: Int32)
+            _ -> error "sql insert failed"
+        void $ execute [pgSQL|
+            DELETE FROM awareness__tag
+            WHERE awareness_id = ${aware};|]
+        forM_ tag_ids $ \tag_id -> void $ execute [pgSQL|
+            INSERT INTO awareness__tag (
+                awareness_id,
+                tag_id
+            ) VALUES (
+                ${aware},
+                ${unPk tag_id}
+            );|]
+    pure item
 
 
 xformRow :: (Int32, Maybe Int32, Text, Text, Text, Text, Maybe Day) -> Stored ActionItem
