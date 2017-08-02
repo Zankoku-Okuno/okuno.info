@@ -53,7 +53,7 @@ instance FromForm ActionItem Form where
         timescale <- timescale
         deadline <- pure $ join deadline
         project_id <- pure $ join project_id
-        tag_ids <- tag_ids
+        tag_ids <- pure $ fromMaybe [] tag_ids
         pure ActionItem{..}
 
 instance PatchForm ActionItem Form where
