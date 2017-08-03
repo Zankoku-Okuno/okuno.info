@@ -111,6 +111,49 @@ function init_multi_select(dom) {
     })
 }
 
+//FIXME the filter should be made to target something more exact than the entire dom
+function init_tag_filter(dom) {
+    console.log("init_tag_filter")
+    dom.querySelectorAll(".tag-filter").forEach(function (filter) {
+        var toggles = filter.querySelectorAll("input[type='checkbox'][value]")
+        function update_filter() {
+            // first, ensure everything is shown
+            dom.querySelectorAll(".tag-filter-hidden").forEach(function (item) {
+                item.classList.remove("tag-filter-hidden")
+            })
+            // then, hide anything that has a tag that is unchecked
+            toggles.forEach(function (toggle) {
+                var affected = dom.querySelectorAll("*[data-tag-"+toggle.value+"]")
+                if (!toggle.checked) {
+                    affected.forEach(function (item) {
+                        item.classList.add("tag-filter-hidden")
+                    })
+                }
+            })
+        }
+        update_filter()
+        toggles.forEach(function (toggle) {
+            toggle.addEventListener('change', update_filter)
+        })
+        filter.querySelectorAll("button[value='all']").forEach(function (button) {
+            button.addEventListener('click', function () {
+                toggles.forEach(function (toggle) {
+                    toggle.checked = true
+                })
+                update_filter()
+            })
+        })
+        filter.querySelectorAll("button[value='none']").forEach(function (button) {
+            button.addEventListener('click', function () {
+                toggles.forEach(function (toggle) {
+                    toggle.checked = false
+                })
+                update_filter()
+            })
+        })
+    })
+}
+
 function init_put_forms(dom) {
     dom.querySelectorAll("form[method='PUT']").forEach(function (form) {
         form.addEventListener("submit", function (e) {
@@ -235,6 +278,7 @@ function patch_dom(dom) {
     init_markdown(dom)
     init_tabs(dom)
     init_multi_select(dom)
+    init_tag_filter(dom)
     dom.querySelectorAll(".action_item[data-pk]").forEach(init_cancel_button)
     dom.querySelectorAll(".project[data-pk]").forEach(init_cancel_button)
     dom.querySelectorAll(".tag[data-pk]").forEach(init_cancel_button)

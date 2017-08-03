@@ -60,15 +60,27 @@ dashboard_R db username req = throwLeftM $ verb (method req) $
             ActionItem.form client options def
                 -- a_ ! [href_ $ userUrl client "/projects"] $ "All Projects"
             hr_ []
+            div_ ! [ class_ "tag-filter" ] $ do
+                button_ ! [ value_ "all" ] $ "All"
+                button_ ! [ value_ "none" ] $ "None"
+                forM_ (snd options) $ \(Stored pk Tag{..}) -> do
+                    label_ $ do
+                        input_ [ type_ "checkbox", autocomplete_ "on", checked_, value_ $ tshow pk ]
+                        -- " "
+                        toHtml name
             div_ ! [ style_ "display: flex; justify-content: space-around; "] $ do
                 forM_ action_itemss $ \action_items -> do
                     div_ $ do
                         let projname = Nothing -- TODO have the project for the action_items available to render stuff
-                        ol_ ! [class_ "action_items ", data_ "project" (fromMaybe "" projname)] $ -- FIXME id_ is inappropriate
+                        ol_ ! [class_ "action_items ", data_ "project" (fromMaybe "" projname)] $
                             forM_ action_items $ \r@(_, item, _, _) -> do
+                                let tag_data = (flip map) (tag_ids $ thePayload item) $ \tag_id ->
+                                                    data_ ("tag-" <> tshow tag_id) "yes"
                                 li_ ! [ class_ "action_item "
                                       , data_ "pk" (tshow $ thePk item)
-                                      ] $ ActionItem.full more r
+                                      ]
+                                    ! tag_data
+                                    $ ActionItem.full more r
 
 
 

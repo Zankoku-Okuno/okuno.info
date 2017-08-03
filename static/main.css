@@ -33,6 +33,21 @@ a.multi_select_delete {
     min-height: 2em;
 }
 
+
+.tag-filter {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.tag-filter > * {
+    margin-left: 1em;
+    flex: 0 0 auto;
+}
+.tag-filter-hidden {
+    display: none;
+}
+
+
 .meta span {
     border-radius: 0.4em;
     font-size: 80%;
