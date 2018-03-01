@@ -7,6 +7,8 @@ At the moment, it is concerned with being an external memory for small notes.
 
 ### Set Up
 
+After cloning the project, don't forget to `git submodule init`.
+
 Install dependencies.
 First, `cabal install --only-dependencies`.
 Then, `cabal install neptune/neptune neptune/neptune-wai`.
