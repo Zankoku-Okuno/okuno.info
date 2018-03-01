@@ -17,3 +17,4 @@ navigation client = div_ ! [ class_ "nav "] $ do
         li_ $ a_ ! [href_ $ userUrl client ""] $ "Dashboard"
         li_ $ a_ ! [href_ $ userUrl client "/projects"] $ "Projects"
         li_ $ a_ ! [href_ $ userUrl client "/tags"] $ "Tags"
+        li_ $ a_ ! [href_ $ userUrl client "/notes"] $ "Notes"

@@ -32,6 +32,7 @@ executable okuno-info
     Html,
     Html.ActionItem,
     Html.Client,
+    Html.Note,
     Html.Project,
     Html.Tag,
     Resources,

@@ -59,9 +59,8 @@ loadConfig :: IO Config
 loadConfig = do
     -- FIXME real command line option parsing
     config_dir <- getArgs >>= \case
-        [] -> pure "."
         [filepath] -> pure $ unpack filepath
-        _ -> error "usage: okuno-info [config-dir]"
+        _ -> error "usage: okuno-info <config-dir>"
     port <- read . unpack . decodeUtf8 <$> readFile (config_dir </> "port.conf")
     user <- fromString <$> getEnv "USER"
     dbname <- fromString <$> getEnv "TPG_DB"
@@ -87,6 +86,7 @@ user_handlers db ((uncons -> Just ('~', Username -> username)) : r, q) = dispatc
     action_handlers (["action-item"], q) = do
         let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
         Just $ action_item_R db (username, pk)
+    action_handlers (["notes"], q) = Just $ notes_R db username
     action_handlers (["project"], q) = do
         let pk = Pk . read . unpack . decodeUtf8 <$> query_queryOne q "id"
         Just $ project_R db (pk, username)

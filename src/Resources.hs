@@ -30,6 +30,10 @@ import Data.Tag (Tag(..))
 import qualified Data.Tag as Tag
 import qualified Html.Tag as Tag
 import qualified Form.Tag as Tag
+import Data.Note (Note(..))
+import qualified Data.Note as Note
+import qualified Html.Note as Note
+-- import qualified Form.Note as Note
 import Data.Client (Client(..), Username(..))
 import qualified Data.Client as Client
 import qualified Html.Client as Client
@@ -193,6 +197,32 @@ tag_R db (pk, username) req = do
     getForm client q = Tag.Form
         { name = decodeUtf8 <$> query_queryOne q "name"
         }
+
+
+
+
+
+notes_R :: Db -> Username -> NeptuneApp
+notes_R db username req = throwLeftM $ verb (method req) $
+    "GET" >: do
+        client <- transact db $ throwMaybe BadResource =<< Client.byName username
+        notes <- transact db $ Note.dashboard client
+        render <- throwLeft $ negotiateMedia [("text/html", html_F client)] (acceptMedia $ negotiation req)
+        pure $ Response { status = Http.status200, responseBody = Just $ second ($ notes) render }
+    where
+    html_F :: Stored Client -> [Stored Note] -> LBS.ByteString
+    html_F client notes = renderBS $ doctypehtml_ $ do
+        defaultHead
+        body_ $ do
+            Client.navigation client
+            ol_ ! [class_ "notes "] $ forM_ notes $ \note -> do
+                li_ ! [ class_ "note "
+                      , data_ "pk" (tshow $ thePk note)
+                      ] $ Note.full note
+            -- ol_ ! [class_ "tags "] $ forM_ tags $ \tag -> do
+            --     li_ ! [ class_ "tag "
+            --           , data_ "pk" (tshow $ thePk tag)
+            --           ] $ Tag.full client tag
 
 
 
