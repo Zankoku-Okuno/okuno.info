@@ -236,7 +236,7 @@ action_item_R db (username, pk) req = throwLeftM $ verbs (method req)
             , timescale = decodeUtf8 <$> query_queryOne q "timescale"
             , deadline = (readTime <$>) =<< parseDeadline <$> query_queryOne q "deadline"
             , project_id = parseProjectId <$> query_queryOne q "project"
-            , tag_ids = parseTagId <$> query_queryAny q "tag"
+            , tag_ids = Just . parseTagId $ query_queryAll q "tag"
             }
         new_tags = query_queryAll q "new_tag"
         parseProjectId "" = Nothing -- TODO check this actually is what the browser does

@@ -126,7 +126,6 @@ _loadTags client (Stored pk preitem) = do
 create :: (Stored Client, ActionItem) -> Sql (Stored ActionItem)
 create (client, item@ActionItem{..}) = do
     ids <- query [pgSQL|
-        -- FIXME add defaults in the database for the timing stuff
         INSERT INTO action_item (
             text,
             lifecycle_id,
