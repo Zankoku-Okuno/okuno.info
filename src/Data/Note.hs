@@ -10,6 +10,8 @@ module Data.Note
     ) where
 
 import ClassyPrelude
+
+import Data.Default
 import Data.Db
 import Database.PostgreSQL.Typed.Enum
 
@@ -18,6 +20,9 @@ import Data.Client (Client, Username)
 
 $(dataPGEnum "NoteState" "note_state" id)
 deriving instance Show NoteState
+deriving instance Read NoteState
+instance Default NoteState where
+    def = Inbox
 
 data Note = Note
     { text :: Text

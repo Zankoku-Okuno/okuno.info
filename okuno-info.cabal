@@ -27,6 +27,7 @@ executable okuno-info
     Data.Tag,
     Form,
     Form.ActionItem,
+    Form.Note,
     Form.Project,
     Form.Tag,
     Html,

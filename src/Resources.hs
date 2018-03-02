@@ -33,7 +33,7 @@ import qualified Form.Tag as Tag
 import Data.Note (Note(..))
 import qualified Data.Note as Note
 import qualified Html.Note as Note
--- import qualified Form.Note as Note
+import qualified Form.Note as Note
 import Data.Client (Client(..), Username(..))
 import qualified Data.Client as Client
 import qualified Html.Client as Client
@@ -215,14 +215,39 @@ notes_R db username req = throwLeftM $ verb (method req) $
         defaultHead
         body_ $ do
             Client.navigation client
+            Note.form client (Nothing, def)
             ol_ ! [class_ "notes "] $ forM_ notes $ \note -> do
                 li_ ! [ class_ "note "
                       , data_ "pk" (tshow $ thePk note)
-                      ] $ Note.full note
-            -- ol_ ! [class_ "tags "] $ forM_ tags $ \tag -> do
-            --     li_ ! [ class_ "tag "
-            --           , data_ "pk" (tshow $ thePk tag)
-            --           ] $ Tag.full client tag
+                      ] $ Note.full client note
+
+note_R :: Db -> (Maybe (Pk Note), Username) -> NeptuneApp
+note_R db (pk, username) req = do
+    client <- transact db $ throwMaybe BadResource =<< Client.byName username
+    note <- throwLeftM $ verbs (method req)
+        [ "PUT" >: do
+            transact db $ do
+                let form = getForm client (snd $ resourceId req) :: Note.Form
+                note <- throwMaybe (error "bad form data" :: Error) $ fromForm form -- TODO
+                print note
+                case pk of
+                    Nothing -> Note.create (client, note)
+                    Just pk -> throwMaybe BadResource =<< Note.update (client, pk) note
+        ]
+    render <- throwLeft $ negotiateMedia [("application/htmlfrag+json", htmlfrag_F client)] (acceptMedia $ negotiation req)
+    pure $ Response { status = Http.status200, responseBody = Just $ second ($ note) render } -- FIXME status201 where appropriate
+    where
+    htmlfrag_F client note =
+        let html = renderText $ Note.full client note
+            json = object ["id" .= thePk note, "htmlfrag" .= html]
+        in encode json
+    getForm client q = Note.Form
+        { text = decodeUtf8 <$> query_queryOne q "text"
+        , owner = Just $ thePk client
+        -- TODO review state and cycles
+        , review_status = read . unpack . decodeUtf8 <$> query_queryOne q "review_status"
+        , review_cycles = Nothing
+        }
 
 
 
