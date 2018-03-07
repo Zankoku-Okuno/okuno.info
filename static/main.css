@@ -19,12 +19,14 @@ a.multi_select_delete {
 
 .action_item[data-pk],
 .project[data-pk],
-.tag[data-pk] {
+.tag[data-pk],
+.note[data-pk] {
     max-width: 30em;
 }
 .action_item[data-pk] > select[data-tabs],
 .project[data-pk] > select[data-tabs],
-.tag[data-pk] > select[data-tabs] {
+.tag[data-pk] > select[data-tabs],
+.note[data-pk] > select[data-tabs] {
     float: right;
 }
 

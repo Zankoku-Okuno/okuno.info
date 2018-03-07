@@ -282,6 +282,7 @@ function patch_dom(dom) {
     dom.querySelectorAll(".action_item[data-pk]").forEach(init_cancel_button)
     dom.querySelectorAll(".project[data-pk]").forEach(init_cancel_button)
     dom.querySelectorAll(".tag[data-pk]").forEach(init_cancel_button)
+    dom.querySelectorAll(".note[data-pk]").forEach(init_cancel_button)
     init_put_forms(dom)
     init_action_item_forms(dom)
     init_item_forms(dom, {
@@ -291,6 +292,10 @@ function patch_dom(dom) {
     init_item_forms(dom, {
         item_class: "tag",
         group_class: "tags",
+    })
+    init_item_forms(dom, {
+        item_class: "note",
+        group_class: "notes",
     })
 
     document.querySelectorAll(".action_item[data-pk]").forEach(function (item) {
