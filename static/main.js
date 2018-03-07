@@ -20,7 +20,7 @@ function init_nav(dom) {
 
 function init_markdown(dom) {
     dom.querySelectorAll(".markdown").forEach(function (md) {
-        md.innerHTML = markdown.toHTML(md.innerHTML)
+        md.innerHTML = markdown.toHTML(md.textContent)
     })
 }
 
