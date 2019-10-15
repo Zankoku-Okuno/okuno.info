@@ -113,7 +113,6 @@ function init_multi_select(dom) {
 
 //FIXME the filter should be made to target something more exact than the entire dom
 function init_tag_filter(dom) {
-    console.log("init_tag_filter")
     dom.querySelectorAll(".tag-filter").forEach(function (filter) {
         var toggles = filter.querySelectorAll("input[type='checkbox'][value]")
         function update_filter() {
@@ -159,34 +158,7 @@ function init_put_forms(dom) {
         form.addEventListener("submit", function (e) {
             e.preventDefault()
 
-            var params = {}
-            form.querySelectorAll("*[name]").forEach(function (data) {
-                var values = (function () {
-                    var values = []
-                    function add(x) {
-                        if (x !== "") { values.push(x) }
-                    }
-
-                    if (data.selectedOptions !== undefined) {
-                        for (var i = 0, e = data.selectedOptions.length; i < e; i++) {
-                            add(data.selectedOptions[i].value)
-                        }
-                    }
-                    else {
-                        add(data.value)
-                    }
-                    return values
-                })()
-
-                if (values === []) { return }
-
-                if (params[data.name] === undefined) {
-                    params[data.name] = values
-                }
-                else {
-                    params[data.name] = params[data.name].concat(values)
-                }
-            })
+            var params = form_to_params(form)
 
             Http.put({
                 url: form.action,
@@ -212,6 +184,71 @@ function init_put_forms(dom) {
             .catch(console.log) // TODO
         })
     })
+}
+
+function init_patch_forms(dom) {
+    dom.querySelectorAll("form[method='PATCH']").forEach(function (form) {
+        form.addEventListener("submit", function (e) {
+            e.preventDefault()
+
+            var params = form_to_params(form)
+
+            Http.patch({
+                url: form.action,
+                query: params,
+                headers: {
+                    'Accept': "application/htmlfrag+json"
+                },
+            })
+            .then(function (response) {
+                var event_name = form.querySelector("input[name='id']") === null
+                               ? 'create'
+                               : 'update'
+                var detail = {
+                    id: response.body.id,
+                    fragment: (function () {
+                            var tmp = document.createElement('template')
+                            tmp.innerHTML = response.body.htmlfrag
+                            return tmp.content
+                        })()
+                }
+                form.dispatchEvent(new CustomEvent(event_name, { detail: detail }))
+            })
+            .catch(console.log) // TODO
+        })
+    })
+}
+
+function form_to_params(form) {
+    var params = {}
+    form.querySelectorAll("*[name]").forEach(function (data) {
+        var values = (function () {
+            var values = []
+            function add(x) {
+                if (x !== "") { values.push(x) }
+            }
+
+            if (data.selectedOptions !== undefined) {
+                for (var i = 0, e = data.selectedOptions.length; i < e; i++) {
+                    add(data.selectedOptions[i].value)
+                }
+            }
+            else {
+                add(data.value)
+            }
+            return values
+        })()
+
+        if (values === []) { return }
+
+        if (params[data.name] === undefined) {
+            params[data.name] = values
+        }
+        else {
+            params[data.name] = params[data.name].concat(values)
+        }
+    })
+    return params
 }
 
 function init_cancel_button(dom) {
@@ -284,6 +321,7 @@ function patch_dom(dom) {
     dom.querySelectorAll(".tag[data-pk]").forEach(init_cancel_button)
     dom.querySelectorAll(".note[data-pk]").forEach(init_cancel_button)
     init_put_forms(dom)
+    init_patch_forms(dom)
     init_action_item_forms(dom)
     init_item_forms(dom, {
         item_class: "project",

@@ -78,3 +78,19 @@ a.multi_select_delete {
     padding-right: 0.25em;
     margin-left: 0.125em
 }
+
+.quickie {
+    text-align: right;
+}
+.quickie form {
+    display: inline;
+}
+.quickie button {
+    font-size: 10pt;
+    height: 16pt;
+    vertical-align: middle;
+    padding: 2px 6px;
+    border: thin solid lightgrey;
+    border-radius: 3px;
+    margin: 3px;
+}

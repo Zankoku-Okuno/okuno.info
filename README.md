@@ -19,6 +19,6 @@ Then, run each numbered file in `sql/` through the db.
 
 ### Enable
 
-Source some connection options for `postgresql-typed`: `source config/dev/`.
+Source some connection options for `postgresql-typed`: `source config/dev/env.sh`.
 Compilation should now be successful.
 Run the server with `cabal run config/dev/`.

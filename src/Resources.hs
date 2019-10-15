@@ -256,9 +256,8 @@ note_R db (pk, username) req = do
 action_item_R :: Db -> (Username, Maybe (Pk ActionItem)) -> NeptuneApp
 action_item_R db (username, pk) req = throwLeftM $ verbs (method req) 
     [ "PUT" >: do
-        today <- utctDay <$> getCurrentTime
-        (client, item, options) <- transact db $ do
-            client <- throwMaybe BadResource =<< Client.byName username
+        (item, options) <- transact db $ do
+            (client, options) <- basicSql
             let (form, new_tags) = getForm client (snd $ resourceId req)
             item <- throwMaybe (error "bad form data" :: Error) $ fromForm form
             -- TODO create new tags
@@ -266,16 +265,39 @@ action_item_R db (username, pk) req = throwLeftM $ verbs (method req)
             item <- case pk of
                 Nothing -> ActionItem.create (client, item)
                 Just pk -> throwMaybe BadResource =<< ActionItem.update (client, pk) item
-            options <- ActionItem.options client
             item <- ActionItem.load client item
-            pure (client, item, options)
+            pure (item, options)
+        goRender item options
+    , "PATCH" >: do
+        pk <- throwMaybe BadResource pk
+        (item, options) <- transact db $ do
+            (client, options) <- basicSql
+            -- get the existing item
+            oldItem <- throwMaybe BadResource =<< ActionItem.byPk (client, pk)
+            -- parse the form
+            let (form, new_tags) = getForm client (snd $ resourceId req)
+            -- merge form with existing item
+                item = patchForm (thePayload oldItem) form
+            -- update the db
+            -- TODO create new tags
+            -- TODO update item to include the new tags
+            item <- throwMaybe BadResource =<< ActionItem.update (client, pk) item
+            item <- ActionItem.load client item
+            pure (item, options)
+        goRender item options
+    ]
+    where
+    basicSql = do
+        client <- throwMaybe BadResource =<< Client.byName username
+        options <- ActionItem.options client
+        pure (client, options)
+    goRender item options = do
+        today <- utctDay <$> getCurrentTime
         render <- throwLeft $ negotiateMedia
                     [ ("text/html", html_F (today, options))
                     , ("application/htmlfrag+json", htmlfrag_F (today, options))
                     ] (acceptMedia $ negotiation req)
         pure $ Response { status = Http.status200, responseBody = Just $ second ($ item) render } -- FIXME status201 where appropriate
-    ]
-    where
     html_F more r = renderBS $ doctypehtml_ $ do
         defaultHead
         body_ $ ActionItem.full more r

@@ -20,6 +20,16 @@ import Html.Client
 full :: (Day, ([Stored Project], [Stored Tag])) -> ActionItem.Loaded -> Html ()
 full (today, options) loaded@(client, item@(Stored pk ActionItem{..}), project, tags) = do
     let tabset = concat ["action_item_", tshow pk]
+    div_ ! [ class_ "quickie"
+           , data_ "tabset" tabset
+           , data_ "tab" "view"
+           ] $ do
+        quickForm loaded (== "active") "complete" "✓"
+        quickForm loaded (== "queued") "active" "⇧"
+        quickForm loaded (`elem` ["proposed", "waiting", "dismissed"]) "queued" "⇧"
+        quickForm loaded (`elem` ["active", "complete"]) "queued" "⇩"
+        quickForm loaded (== "queued") "waiting" "⇩"
+        quickForm loaded (`notElem` ["complete", "dismissed"]) "dismissed" "🗑"
     select_ [data_ "tabs" tabset] $ do
         option_ ! [value_ "view", selected_ "true"] $ "View"
         option_ ! [value_ "edit"] $ "Edit"
@@ -110,3 +120,14 @@ form client (allProjects, allTags) item_m = case item_m of
                 , class_ "action_item "
                 , spellcheck_ "true"
                 ] $ body
+
+quickForm :: ActionItem.Loaded -> (Text -> Bool) -> Text -> Html() -> Html ()
+quickForm loaded@(client, item@(Stored pk ActionItem{..}), _, _) isRelevant lifecycle' symbol = do
+    when (isRelevant lifecycle) $ do
+        form_ ! [ method_ "PATCH"
+                , action_ $ userUrl client "/action-item"
+                , class_ "action_item "
+                ] $ do
+            input_ [type_ "hidden", name_ "id", value_ $ tshow pk]
+            input_ [type_ "hidden", name_ "lifecycle", value_ lifecycle']
+            button_ ! [type_ "submit"] $ symbol
